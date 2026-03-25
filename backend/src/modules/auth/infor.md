@@ -1,3 +1,4 @@
 # Auth module
+
 - Login/ Register
-- JWT/ 
+- JWT/ Refresh token
