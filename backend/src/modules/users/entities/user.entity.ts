@@ -4,6 +4,8 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToOne,
+  JoinColumn,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
 
@@ -45,4 +47,7 @@ export class User {
 
   @UpdateDateColumn()
   updated_at!: Date;
+
+  @OneToOne('UserHealthProfile', 'user')
+  healthProfile!: any;
 }

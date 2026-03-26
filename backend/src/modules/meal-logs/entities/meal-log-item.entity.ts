@@ -12,17 +12,19 @@ import { Food } from '../../foods/entities/food.entity';
 @Entity('meal_log_items')
 export class MealLogItem {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ type: 'uuid' })
-  meal_log_id: string;
+  meal_log_id!: string;
 
-  @ManyToOne(() => MealLog, (mealLog: MealLog) => mealLog.items, { onDelete: 'CASCADE' })
+  @ManyToOne(() => MealLog, (mealLog: MealLog) => mealLog.items, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'meal_log_id' })
-  meal_log: MealLog;
+  meal_log!: MealLog;
 
   @Column({ type: 'uuid' })
-  food_id: string;
+  food_id!: string;
 
   @ManyToOne(() => Food)
   @JoinColumn({ name: 'food_id' })

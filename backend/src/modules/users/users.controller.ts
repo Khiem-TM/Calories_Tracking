@@ -10,6 +10,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../../common/interfaces/jwt-payload.interface';
 import { User } from './entities/user.entity';
+import { UserHealthProfile } from './entities/user-health-profile.entity';
 
 @Controller('users')
 export class UsersController {
@@ -28,6 +29,15 @@ export class UsersController {
     @Body() updateData: { display_name?: string; avatar_url?: string },
   ): Promise<User> {
     return this.usersService.updateProfile(user.sub, updateData);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me/health-profile')
+  async updateHealthProfile(
+    @CurrentUser() user: JwtPayload,
+    @Body() data: Partial<UserHealthProfile>,
+  ): Promise<UserHealthProfile> {
+    return this.usersService.updateHealthProfile(user.sub, data);
   }
 
   @UseGuards(JwtAuthGuard)

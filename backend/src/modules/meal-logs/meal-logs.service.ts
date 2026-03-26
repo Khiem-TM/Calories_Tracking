@@ -1,91 +1,59 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MealLog } from './entities/meal-log.entity';
 import { MealLogItem } from './entities/meal-log-item.entity';
 import { CreateMealLogDto, CreateMealLogItemDto } from './dto/create-meal-log.dto';
 import { Food } from '../foods/entities/food.entity';
+import { MEAL_LOGS_REPOSITORY } from './meal-logs.constants';
+import type { IMealLogsRepository } from './repositories/meal-logs.repository.interface';
 
 @Injectable()
 export class MealLogsService {
   constructor(
-    @InjectRepository(MealLog)
-    private readonly mealLogRepository: Repository<MealLog>,
-    @InjectRepository(MealLogItem)
-    private readonly mealLogItemRepository: Repository<MealLogItem>,
+    @Inject(MEAL_LOGS_REPOSITORY)
+    private readonly repository: IMealLogsRepository,
     @InjectRepository(Food)
     private readonly foodRepository: Repository<Food>,
   ) {}
 
   async create(userId: string, dto: CreateMealLogDto): Promise<MealLog> {
-    // Check if meal log already exists for date + type
-    let log = await this.mealLogRepository.findOne({
-      where: { user_id: userId, log_date: dto.log_date, meal_type: dto.meal_type },
-      relations: ['items'],
-    });
-
-    if (!log) {
-      log = this.mealLogRepository.create({
-        user_id: userId,
-        log_date: dto.log_date,
-        meal_type: dto.meal_type,
-        notes: dto.notes,
-      });
-      log = await this.mealLogRepository.save(log);
-    }
+    const log = await this.repository.findOrCreate(userId, dto.log_date, dto.meal_type);
 
     if (dto.items && dto.items.length > 0) {
       for (const itemDto of dto.items) {
         await this.addItemToLog(userId, log.id, itemDto);
       }
-      log = await this.mealLogRepository.findOne({
-        where: { id: log.id },
-        relations: ['items', 'items.food'],
-      }) as MealLog;
     }
 
-    return log;
+    return this.repository.findById(log.id) as Promise<MealLog>;
   }
 
   async findAllByUser(userId: string, date?: string): Promise<MealLog[]> {
-    const query: any = { user_id: userId };
-    if (date) query.log_date = date;
-
-    return this.mealLogRepository.find({
-      where: query,
-      relations: ['items', 'items.food'],
-      order: { log_date: 'DESC' },
-    });
+    return this.repository.findByUser(userId, date);
   }
 
   async findOne(userId: string, id: string): Promise<MealLog> {
-    const log = await this.mealLogRepository.findOne({
-      where: { id, user_id: userId },
-      relations: ['items', 'items.food'],
-    });
-    if (!log) throw new NotFoundException('Meal log not found');
+    const log = await this.repository.findById(id);
+    if (!log || log.user_id !== userId) throw new NotFoundException('Meal log not found');
     return log;
   }
 
   async addItemToLog(userId: string, logId: string, itemDto: CreateMealLogItemDto): Promise<MealLogItem> {
     const log = await this.findOne(userId, logId);
-    if (!log) throw new NotFoundException('Meal log not found');
-
+    
     const food = await this.foodRepository.findOne({ where: { id: itemDto.food_id } });
     if (!food) throw new NotFoundException('Food not found');
 
-    // Convert to grams based on serving - assuming 'serving_size_g' is the base per 1 serving_unit
-    // OR if user specifies generic "g", quantity is just grams.
     let quantity_in_grams = itemDto.quantity;
     if (itemDto.serving_unit.toLowerCase() !== 'g' && food.serving_unit === itemDto.serving_unit) {
       quantity_in_grams = itemDto.quantity * food.serving_size_g;
     } else if (itemDto.serving_unit.toLowerCase() !== 'g') {
-       // fallback: assuming standard unit scaling is not supported unless matches food explicitly
        quantity_in_grams = itemDto.quantity * food.serving_size_g;
     }
 
     const ratio = quantity_in_grams / 100;
-    const newItem = this.mealLogItemRepository.create({
+    const itemData: Partial<MealLogItem> = {
       meal_log_id: log.id,
       food_id: food.id,
       quantity: itemDto.quantity,
@@ -99,15 +67,20 @@ export class MealLogsService {
       sugar_snapshot: (food.sugar_per_100g || 0) * ratio,
       sodium_snapshot: (food.sodium_per_100g || 0) * ratio,
       source: itemDto.source || 'manual',
-    });
+    };
 
-    return this.mealLogItemRepository.save(newItem);
+    return this.repository.saveItem(itemData);
   }
 
   async removeItemFromLog(userId: string, logId: string, itemId: string): Promise<void> {
-    const log = await this.findOne(userId, logId);
-    if (!log) throw new NotFoundException('Meal log not found');
-    await this.mealLogItemRepository.delete({ id: itemId, meal_log_id: log.id });
+    const item = await this.repository.findItemById(itemId);
+    if (!item || item.meal_log_id !== logId) throw new NotFoundException('Item not found');
+    
+    // Ownership check via parent log
+    const log = await this.repository.findById(logId);
+    if (!log || log.user_id !== userId) throw new NotFoundException('Meal log not found');
+
+    await this.repository.removeItem(itemId);
   }
 
   async getDailySummary(userId: string, date: string) {

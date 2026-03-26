@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
+import { UserHealthProfile } from './entities/user-health-profile.entity';
 
 @Injectable()
 export class UsersService {
@@ -72,5 +73,25 @@ export class UsersService {
     });
 
     return { users, total };
+  }
+
+  async getHealthProfile(userId: string): Promise<UserHealthProfile | null> {
+    return this.userRepository.manager.findOne(UserHealthProfile, {
+      where: { userId },
+    }) as Promise<UserHealthProfile | null>;
+  }
+
+  async updateHealthProfile(userId: string, data: Partial<UserHealthProfile>): Promise<UserHealthProfile> {
+    const profile = await this.getHealthProfile(userId);
+    if (profile) {
+      Object.assign(profile, data);
+      return this.userRepository.manager.save(UserHealthProfile, profile);
+    }
+    
+    const newProfile = this.userRepository.manager.create(UserHealthProfile, {
+      userId,
+      ...data,
+    });
+    return this.userRepository.manager.save(UserHealthProfile, newProfile);
   }
 }

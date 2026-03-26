@@ -7,6 +7,11 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { FoodsModule } from './modules/foods/foods.module';
 import { MealLogsModule } from './modules/meal-logs/meal-logs.module';
+import { BodyMetricsModule } from './modules/body-metrics/body-metrics.module';
+import { ActivityLogsModule } from './modules/activity-logs/activity-logs.module';
+import { StreaksModule } from './modules/streaks/streaks.module';
+import { TrainingModule } from './modules/training/training.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -45,6 +50,11 @@ import { MealLogsModule } from './modules/meal-logs/meal-logs.module';
     UsersModule,
     FoodsModule,
     MealLogsModule,
+    BodyMetricsModule,
+    ActivityLogsModule,
+    StreaksModule,
+    TrainingModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

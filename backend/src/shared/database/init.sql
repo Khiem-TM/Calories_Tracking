@@ -12,6 +12,9 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- ============================================================
 -- DROP (nếu cần reset, uncomment block dưới)
 -- ============================================================
+-- DROP TABLE IF EXISTS training_goals       CASCADE;
+-- DROP TABLE IF EXISTS workout_sessions     CASCADE;
+-- DROP TABLE IF EXISTS exercises            CASCADE;
 -- DROP TABLE IF EXISTS blog_post_tags       CASCADE;
 -- DROP TABLE IF EXISTS blog_tags            CASCADE;
 -- DROP TABLE IF EXISTS blog_posts           CASCADE;
@@ -87,6 +90,7 @@ CREATE TABLE user_health_profiles (
     initial_weight_kg   DECIMAL(5,1)    NOT NULL,               -- Cân nặng khi onboarding
     activity_level      VARCHAR(20)     NOT NULL,
     diet_type           VARCHAR(30)     NULL,
+    food_allergies      TEXT[]          DEFAULT '{}',
     created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
 
@@ -603,6 +607,65 @@ CREATE INDEX idx_post_tags_tag_id ON blog_post_tags (tag_id);
 
 COMMENT ON TABLE blog_post_tags IS 'Pivot table: blog_posts × blog_tags (N-M)';
 
+
+-- ============================================================
+-- 18. EXERCISES
+-- ============================================================
+CREATE TABLE exercises (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name          VARCHAR(255) NOT NULL,
+  name_en       VARCHAR(255),
+  description   TEXT,
+  muscle_group  VARCHAR(50) NOT NULL,  -- 'chest'|'back'|'legs'|'shoulders'|'arms'|'core'|'cardio'|'full_body'
+  equipment     VARCHAR(50),           -- 'barbell'|'dumbbell'|'machine'|'bodyweight'|'cable'|'kettlebell'|null
+  difficulty    VARCHAR(20) NOT NULL,  -- 'beginner'|'intermediate'|'advanced'
+  calories_per_min_light    DECIMAL(5,2),  -- kcal/min at light intensity
+  calories_per_min_moderate DECIMAL(5,2),  -- kcal/min at moderate intensity
+  calories_per_min_heavy    DECIMAL(5,2),  -- kcal/min at heavy intensity
+  image_url     TEXT,
+  video_url     TEXT,
+  is_active     BOOLEAN DEFAULT true,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- 19. WORKOUT SESSIONS
+-- ============================================================
+CREATE TABLE workout_sessions (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  exercise_id     UUID NOT NULL REFERENCES exercises(id) ON DELETE RESTRICT,
+  session_date    DATE NOT NULL,
+  intensity       VARCHAR(20) NOT NULL,   -- 'light'|'moderate'|'heavy'  (enum)
+  duration_minutes INTEGER NOT NULL,       -- total minutes
+  calories_burned DECIMAL(7,2),           -- auto-calculated from intensity + duration + user weight
+  notes           TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_workout_sessions_user_date ON workout_sessions(user_id, session_date DESC);
+
+-- ============================================================
+-- 20. TRAINING GOALS
+-- ============================================================
+CREATE TABLE training_goals (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title           VARCHAR(255) NOT NULL,       -- e.g. "Lose 5kg in 3 months"
+  description     TEXT,
+  goal_type       VARCHAR(30) NOT NULL,         -- 'lose_weight'|'gain_muscle'|'improve_endurance'|'maintain'
+  target_value    DECIMAL(7,2),                 -- e.g. target weight 65.0kg, or target sessions/week = 4
+  target_unit     VARCHAR(20),                  -- 'kg'|'sessions_per_week'|'km'|'minutes'
+  start_date      DATE NOT NULL,
+  end_date        DATE,                          -- nullable = open-ended
+  status          VARCHAR(20) DEFAULT 'active', -- 'active'|'completed'|'abandoned'
+  completed_at    TIMESTAMPTZ,
+  abandoned_at    TIMESTAMPTZ,
+  notes           TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_training_goals_user_status ON training_goals(user_id, status);
 
 -- ============================================================
 -- SEED DATA MẪU (optional - bỏ comment để chạy)

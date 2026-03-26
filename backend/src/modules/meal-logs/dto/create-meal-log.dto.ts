@@ -7,6 +7,7 @@ import {
   IsDateString,
   IsUUID,
   Min,
+  IsEnum,
 } from 'class-validator';
 
 export class CreateMealLogItemDto {
@@ -27,13 +28,15 @@ export class CreateMealLogItemDto {
   source?: 'manual' | 'ai_scan' | 'barcode' | 'history' | 'favorite';
 }
 
+import { MealType } from '../../../common/enums/meal-type.enum';
+
 export class CreateMealLogDto {
   @IsDateString()
   log_date!: string;
 
   @IsString()
-  @IsIn(['breakfast', 'lunch', 'dinner', 'snack'])
-  meal_type!: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  @IsEnum(MealType)
+  meal_type!: MealType;
 
   @IsString()
   @IsOptional()
