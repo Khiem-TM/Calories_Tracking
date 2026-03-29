@@ -2,16 +2,21 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike } from 'typeorm';
 import { Food } from './entities/food.entity';
+import { FoodBarcode } from './entities/food-barcode.entity';
 import { FoodUserFavorite } from './entities/food-user-favorite.entity';
 import { CreateFoodDto } from './dto/create-food.dto';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Injectable()
 export class FoodsService {
   constructor(
     @InjectRepository(Food)
     private readonly foodRepository: Repository<Food>,
+    @InjectRepository(FoodBarcode)
+    private readonly barcodeRepository: Repository<FoodBarcode>,
     @InjectRepository(FoodUserFavorite)
     private readonly favoriteRepository: Repository<FoodUserFavorite>,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async findAll(query: string = '', page: number = 1, limit: number = 20) {
@@ -73,5 +78,34 @@ export class FoodsService {
 
   async removeFavorite(userId: string, foodId: string): Promise<void> {
     await this.favoriteRepository.delete({ user_id: userId, food_id: foodId });
+  }
+
+  async uploadImage(foodId: string, file: Express.Multer.File): Promise<Food> {
+    const food = await this.findOne(foodId);
+    const { url, publicId } = await this.cloudinaryService.uploadFile(file, 'foods');
+    food.image_urls = [...(food.image_urls ?? []), url];
+    food.image_public_ids = [...(food.image_public_ids ?? []), publicId];
+    return this.foodRepository.save(food);
+  }
+
+  async removeImage(foodId: string, publicId: string): Promise<Food> {
+    const food = await this.findOne(foodId);
+    const idx = (food.image_public_ids ?? []).indexOf(publicId);
+    if (idx === -1) throw new NotFoundException('Image not found on this food');
+    await this.cloudinaryService.deleteFile(publicId).catch(() => undefined);
+    food.image_public_ids = (food.image_public_ids ?? []).filter((_, i) => i !== idx);
+    food.image_urls = (food.image_urls ?? []).filter((_, i) => i !== idx);
+    return this.foodRepository.save(food);
+  }
+
+  async findByBarcode(barcode: string): Promise<Food> {
+    const record = await this.barcodeRepository.findOne({
+      where: { barcode },
+      relations: ['food'],
+    });
+    if (!record || !record.food) {
+      throw new NotFoundException(`Food with barcode ${barcode} not found`);
+    }
+    return record.food;
   }
 }

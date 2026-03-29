@@ -1,4 +1,9 @@
-import { Injectable, Inject, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { BODY_METRICS_REPOSITORY } from '../body-metrics.constants';
 import type { IBodyMetricsRepository } from '../repositories/body-metrics.repository.interface';
 import { UpsertBodyMetricDto } from '../dto/upsert-body-metric.dto';
@@ -6,6 +11,13 @@ import { BodyMetricQueryDto } from '../dto/body-metric-query.dto';
 import { UsersService } from '../../users/users.service';
 import { BMIUtil } from '../../../common/utils/bmi.util';
 import { TDEEUtil } from '../../../common/utils/tdee.util';
+import { CloudinaryService } from '../../cloudinary/cloudinary.service';
+
+interface MetricCalculated extends UpsertBodyMetricDto {
+  bmi?: number;
+  bmr?: number;
+  tdee?: number;
+}
 
 @Injectable()
 export class BodyMetricsService {
@@ -13,41 +25,31 @@ export class BodyMetricsService {
     @Inject(BODY_METRICS_REPOSITORY)
     private readonly repository: IBodyMetricsRepository,
     private readonly usersService: UsersService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async upsert(userId: string, dto: UpsertBodyMetricDto) {
-    const metric: any = { ...dto }; // Initialize metric object with DTO properties
+    const metric: MetricCalculated = { ...dto };
 
     if (dto.weightKg) {
       const profile = await this.usersService.getHealthProfile(userId);
-      console.log(
-        'DEBUG: Upserting metric for user',
-        userId,
-        'Profile:',
-        profile,
-      );
-      if (profile && profile.heightCm) {
+      if (profile?.heightCm) {
         metric.bmi = BMIUtil.calculate(dto.weightKg, profile.heightCm);
-        console.log('DEBUG: BMI Calculated:', metric.bmi);
 
         if (profile.birthDate && profile.gender && profile.activityLevel) {
-          const birthDate = new Date(profile.birthDate);
-          const age = new Date().getFullYear() - birthDate.getFullYear();
-          const bmr = TDEEUtil.calculateBMR(
+          const age =
+            new Date().getFullYear() -
+            new Date(profile.birthDate).getFullYear();
+          metric.bmr = TDEEUtil.calculateBMR(
             dto.weightKg,
             profile.heightCm,
             age,
             profile.gender,
           );
-          metric.bmr = bmr;
-          metric.tdee = TDEEUtil.calculateTDEE(bmr, profile.activityLevel);
-          console.log('DEBUG: BMR/TDEE Calculated:', metric.bmr, metric.tdee);
-        } else {
-          console.log('DEBUG: Missing profile data for TDEE:', {
-            birthDate: !!profile.birthDate,
-            gender: !!profile.gender,
-            activityLevel: !!profile.activityLevel,
-          });
+          metric.tdee = TDEEUtil.calculateTDEE(
+            metric.bmr,
+            profile.activityLevel,
+          );
         }
       }
     }
@@ -80,7 +82,6 @@ export class BodyMetricsService {
       };
     }
 
-    // Sort by date ASC to find the first record
     const sorted = [...history].sort(
       (a, b) =>
         new Date(a.recordedDate).getTime() - new Date(b.recordedDate).getTime(),
@@ -88,9 +89,8 @@ export class BodyMetricsService {
 
     const first = sorted[0];
     const latest = sorted[sorted.length - 1];
-
-    const startWeight = first.weightKg || 0;
-    const currentWeight = latest.weightKg || 0;
+    const startWeight = Number(first.weightKg) || 0;
+    const currentWeight = Number(latest.weightKg) || 0;
 
     return {
       startWeight,
@@ -102,19 +102,31 @@ export class BodyMetricsService {
     };
   }
 
-  async getPhotosByUser(userId: string, limit: number = 10) {
+  async getPhotosByUser(userId: string, limit = 10) {
     return this.repository.findPhotosByUser(userId, limit);
   }
 
-  // Note: uploadProgressPhoto would require a StorageService.
-  // For now we'll implement the metadata saving part.
-  async savePhotoMetadata(
+  async uploadPhoto(
     userId: string,
-    data: { photoUrl: string; photoType: string; bodyMetricId?: string },
+    file: Express.Multer.File,
+    photoType: string,
+    bodyMetricId?: string,
   ) {
-    return this.repository.savePhoto({
-      userId,
-      ...data,
-    });
+    const { url, publicId } = await this.cloudinaryService.uploadFile(file, 'progress-photos');
+    return this.repository.savePhoto({ userId, photoUrl: url, photoPublicId: publicId, photoType, bodyMetricId });
+  }
+
+  async deletePhoto(userId: string, photoId: string): Promise<void> {
+    const photo = await this.repository.findPhotoById(photoId);
+    if (!photo) {
+      throw new NotFoundException('Photo not found');
+    }
+    if (photo.userId !== userId) {
+      throw new ForbiddenException('You can only delete your own photos');
+    }
+    if (photo.photoPublicId) {
+      await this.cloudinaryService.deleteFile(photo.photoPublicId).catch(() => undefined);
+    }
+    await this.repository.deletePhoto(photoId);
   }
 }

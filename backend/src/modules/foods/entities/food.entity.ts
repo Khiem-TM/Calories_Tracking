@@ -60,8 +60,11 @@ export class Food {
   @Column({ type: 'decimal', precision: 7, scale: 2, nullable: true })
   cholesterol_per_100g: number;
 
-  @Column({ type: 'text', array: true, nullable: true })
-  image_urls: string[];
+  @Column({ type: 'text', array: true, nullable: true, default: null })
+  image_urls: string[] | null = null;
+
+  @Column({ type: 'text', array: true, nullable: true, default: null })
+  image_public_ids: string[] | null = null;
 
   @Column({ type: 'boolean', default: false })
   is_custom: boolean;

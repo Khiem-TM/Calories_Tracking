@@ -10,6 +10,6 @@ export enum FoodAllergyType {
   SESAME = 'sesame',
   PORK = 'pork', // Common in Vietnam
   BEEF = 'beef',
-  SPICY = 'spicy', // Not allergy but preference/sensitivity
+  SPICY = 'spicy',
   NONE = 'none',
 }

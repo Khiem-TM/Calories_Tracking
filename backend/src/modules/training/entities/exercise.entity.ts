@@ -41,6 +41,12 @@ export class Exercise {
   @Column({ name: 'video_url', type: 'text', nullable: true })
   videoUrl!: string;
 
+  @Column({ name: 'image_url', type: 'text', nullable: true, default: null })
+  imageUrl!: string | null;
+
+  @Column({ name: 'image_public_id', type: 'varchar', length: 255, nullable: true, default: null })
+  imagePublicId!: string | null;
+
   @CreateDateColumn()
   createdAt!: Date;
 

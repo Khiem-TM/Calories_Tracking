@@ -35,6 +35,12 @@ export class MealLog {
   @Column({ type: 'text', nullable: true })
   notes: string;
 
+  @Column({ type: 'text', nullable: true, default: null })
+  image_url: string | null = null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, default: null })
+  image_public_id: string | null = null;
+
   @OneToMany(() => MealLogItem, (item: MealLogItem) => item.meal_log, { cascade: true })
   items: MealLogItem[];
 

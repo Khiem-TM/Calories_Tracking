@@ -29,6 +29,11 @@ export class ExercisesRepository implements IExercisesRepository {
   async findById(id: string): Promise<Exercise | null> {
     return this.repo.findOne({ where: { id } });
   }
+
+  async updateImage(id: string, imageUrl: string | null, imagePublicId: string | null): Promise<Exercise> {
+    await this.repo.update(id, { imageUrl, imagePublicId });
+    return this.repo.findOne({ where: { id } }) as Promise<Exercise>;
+  }
 }
 
 @Injectable()
@@ -53,12 +58,26 @@ export class WorkoutSessionsRepository implements IWorkoutSessionsRepository {
   }
 
   async findByDateRange(userId: string, from: string, to: string): Promise<WorkoutSession[]> {
-    return this.repo.createQueryBuilder('ws')
+    return this.repo
+      .createQueryBuilder('ws')
       .leftJoinAndSelect('ws.exercise', 'exercise')
       .where('ws.userId = :userId', { userId })
       .andWhere('ws.sessionDate BETWEEN :from AND :to', { from, to })
       .orderBy('ws.sessionDate', 'ASC')
       .getMany();
+  }
+
+  async findById(id: string): Promise<WorkoutSession | null> {
+    return this.repo.findOne({ where: { id }, relations: ['exercise'] });
+  }
+
+  async update(id: string, data: Partial<WorkoutSession>): Promise<WorkoutSession> {
+    await this.repo.update(id, data);
+    return this.repo.findOne({ where: { id }, relations: ['exercise'] }) as Promise<WorkoutSession>;
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.repo.delete(id);
   }
 }
 
@@ -87,5 +106,14 @@ export class TrainingGoalsRepository implements ITrainingGoalsRepository {
 
   async updateProgress(goalId: string, progress: number): Promise<void> {
     await this.repo.update(goalId, { currentValue: progress });
+  }
+
+  async update(id: string, data: Partial<TrainingGoal>): Promise<TrainingGoal> {
+    await this.repo.update(id, data);
+    return this.repo.findOne({ where: { id } }) as Promise<TrainingGoal>;
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.repo.delete(id);
   }
 }

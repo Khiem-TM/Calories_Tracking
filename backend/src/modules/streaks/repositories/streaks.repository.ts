@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Streak } from '../entities/streak.entity';
 import { IStreaksRepository } from './streaks.repository.interface';
+import { StreakType } from '../../../common/enums/streak-type.enum';
 
 @Injectable()
 export class StreaksRepository implements IStreaksRepository {
@@ -11,7 +12,7 @@ export class StreaksRepository implements IStreaksRepository {
     private readonly repo: Repository<Streak>,
   ) {}
 
-  async findOrCreate(userId: string, type: 'login' | 'calorie_goal' | 'workout'): Promise<Streak> {
+  async findOrCreate(userId: string, type: StreakType): Promise<Streak> {
     let streak = await this.repo.findOne({
       where: { user_id: userId, streak_type: type },
     });
@@ -33,7 +34,12 @@ export class StreaksRepository implements IStreaksRepository {
     return this.repo.find({ where: { user_id: userId } });
   }
 
-  async updateStreak(streakId: string, current: number, longest: number, lastDate: string): Promise<Streak> {
+  async updateStreak(
+    streakId: string,
+    current: number,
+    longest: number,
+    lastDate: string,
+  ): Promise<Streak> {
     await this.repo.update(streakId, {
       current_streak: current,
       longest_streak: longest,
@@ -42,7 +48,7 @@ export class StreaksRepository implements IStreaksRepository {
     return this.repo.findOne({ where: { id: streakId } }) as Promise<Streak>;
   }
 
-  async findAllByType(type: 'login' | 'calorie_goal' | 'workout'): Promise<Streak[]> {
+  async findAllByType(type: StreakType): Promise<Streak[]> {
     return this.repo.find({ where: { streak_type: type } });
   }
 }

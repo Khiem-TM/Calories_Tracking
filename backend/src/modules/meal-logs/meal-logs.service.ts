@@ -3,10 +3,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MealLog } from './entities/meal-log.entity';
 import { MealLogItem } from './entities/meal-log-item.entity';
-import { CreateMealLogDto, CreateMealLogItemDto } from './dto/create-meal-log.dto';
+import {
+  CreateMealLogDto,
+  CreateMealLogItemDto,
+} from './dto/create-meal-log.dto';
+import { UpdateMealLogDto, UpdateMealLogItemDto } from './dto/update-meal-log.dto';
+import { UploadImageDto } from './dto/upload-image.dto';
 import { Food } from '../foods/entities/food.entity';
 import { MEAL_LOGS_REPOSITORY } from './meal-logs.constants';
 import type { IMealLogsRepository } from './repositories/meal-logs.repository.interface';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Injectable()
 export class MealLogsService {
@@ -15,10 +21,15 @@ export class MealLogsService {
     private readonly repository: IMealLogsRepository,
     @InjectRepository(Food)
     private readonly foodRepository: Repository<Food>,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async create(userId: string, dto: CreateMealLogDto): Promise<MealLog> {
-    const log = await this.repository.findOrCreate(userId, dto.log_date, dto.meal_type);
+    const log = await this.repository.findOrCreate(
+      userId,
+      dto.log_date,
+      dto.meal_type,
+    );
 
     if (dto.items && dto.items.length > 0) {
       for (const itemDto of dto.items) {
@@ -35,21 +46,69 @@ export class MealLogsService {
 
   async findOne(userId: string, id: string): Promise<MealLog> {
     const log = await this.repository.findById(id);
-    if (!log || log.user_id !== userId) throw new NotFoundException('Meal log not found');
+    if (!log || log.user_id !== userId) {
+      throw new NotFoundException('Meal log not found');
+    }
     return log;
   }
 
-  async addItemToLog(userId: string, logId: string, itemDto: CreateMealLogItemDto): Promise<MealLogItem> {
+  async updateLog(userId: string, id: string, dto: UpdateMealLogDto): Promise<MealLog> {
+    await this.findOne(userId, id);
+    return this.repository.updateLog(id, dto);
+  }
+
+  async deleteLog(userId: string, id: string): Promise<void> {
+    const log = await this.findOne(userId, id);
+    if (log.image_public_id) {
+      await this.cloudinaryService.deleteFile(log.image_public_id).catch(() => undefined);
+    }
+    return this.repository.deleteLog(id);
+  }
+
+  async uploadImage(
+    userId: string,
+    id: string,
+    file: Express.Multer.File,
+  ): Promise<MealLog> {
+    const log = await this.findOne(userId, id);
+    if (log.image_public_id) {
+      await this.cloudinaryService.deleteFile(log.image_public_id).catch(() => undefined);
+    }
+    const { url, publicId } = await this.cloudinaryService.uploadFile(file, 'meal-logs');
+    return this.repository.updateImage(id, url, publicId);
+  }
+
+  async uploadBase64Image(
+    userId: string,
+    id: string,
+    dto: UploadImageDto,
+  ): Promise<MealLog> {
+    const log = await this.findOne(userId, id);
+    if (log.image_public_id) {
+      await this.cloudinaryService.deleteFile(log.image_public_id).catch(() => undefined);
+    }
+    const { url, publicId } = await this.cloudinaryService.uploadBase64(dto.imageData, 'meal-logs');
+    return this.repository.updateImage(id, url, publicId);
+  }
+
+  async addItemToLog(
+    userId: string,
+    logId: string,
+    itemDto: CreateMealLogItemDto,
+  ): Promise<MealLogItem> {
     const log = await this.findOne(userId, logId);
-    
+
     const food = await this.foodRepository.findOne({ where: { id: itemDto.food_id } });
     if (!food) throw new NotFoundException('Food not found');
 
     let quantity_in_grams = itemDto.quantity;
-    if (itemDto.serving_unit.toLowerCase() !== 'g' && food.serving_unit === itemDto.serving_unit) {
+    if (
+      itemDto.serving_unit.toLowerCase() !== 'g' &&
+      food.serving_unit === itemDto.serving_unit
+    ) {
       quantity_in_grams = itemDto.quantity * food.serving_size_g;
     } else if (itemDto.serving_unit.toLowerCase() !== 'g') {
-       quantity_in_grams = itemDto.quantity * food.serving_size_g;
+      quantity_in_grams = itemDto.quantity * food.serving_size_g;
     }
 
     const ratio = quantity_in_grams / 100;
@@ -58,7 +117,7 @@ export class MealLogsService {
       food_id: food.id,
       quantity: itemDto.quantity,
       serving_unit: itemDto.serving_unit,
-      quantity_in_grams: quantity_in_grams,
+      quantity_in_grams,
       calories_snapshot: food.calories_per_100g * ratio,
       protein_snapshot: food.protein_per_100g * ratio,
       fat_snapshot: food.fat_per_100g * ratio,
@@ -72,20 +131,66 @@ export class MealLogsService {
     return this.repository.saveItem(itemData);
   }
 
-  async removeItemFromLog(userId: string, logId: string, itemId: string): Promise<void> {
+  async updateItem(
+    userId: string,
+    logId: string,
+    itemId: string,
+    dto: UpdateMealLogItemDto,
+  ): Promise<MealLogItem> {
     const item = await this.repository.findItemById(itemId);
-    if (!item || item.meal_log_id !== logId) throw new NotFoundException('Item not found');
-    
-    // Ownership check via parent log
+    if (!item || item.meal_log_id !== logId) {
+      throw new NotFoundException('Item not found');
+    }
     const log = await this.repository.findById(logId);
-    if (!log || log.user_id !== userId) throw new NotFoundException('Meal log not found');
+    if (!log || log.user_id !== userId) {
+      throw new NotFoundException('Meal log not found');
+    }
 
+    const food = await this.foodRepository.findOne({ where: { id: item.food_id } });
+    if (!food) throw new NotFoundException('Food not found');
+
+    const newQuantity = dto.quantity ?? item.quantity;
+    const newUnit = dto.serving_unit ?? item.serving_unit;
+
+    let quantity_in_grams = newQuantity;
+    if (newUnit.toLowerCase() !== 'g') {
+      quantity_in_grams = newQuantity * food.serving_size_g;
+    }
+
+    const ratio = quantity_in_grams / 100;
+    return this.repository.updateItem(itemId, {
+      quantity: newQuantity,
+      serving_unit: newUnit,
+      quantity_in_grams,
+      calories_snapshot: food.calories_per_100g * ratio,
+      protein_snapshot: food.protein_per_100g * ratio,
+      fat_snapshot: food.fat_per_100g * ratio,
+      carbs_snapshot: food.carbs_per_100g * ratio,
+      fiber_snapshot: (food.fiber_per_100g || 0) * ratio,
+      sugar_snapshot: (food.sugar_per_100g || 0) * ratio,
+      sodium_snapshot: (food.sodium_per_100g || 0) * ratio,
+    });
+  }
+
+  async removeItemFromLog(
+    userId: string,
+    logId: string,
+    itemId: string,
+  ): Promise<void> {
+    const item = await this.repository.findItemById(itemId);
+    if (!item || item.meal_log_id !== logId) {
+      throw new NotFoundException('Item not found');
+    }
+    const log = await this.repository.findById(logId);
+    if (!log || log.user_id !== userId) {
+      throw new NotFoundException('Meal log not found');
+    }
     await this.repository.removeItem(itemId);
   }
 
   async getDailySummary(userId: string, date: string) {
     const logs = await this.findAllByUser(userId, date);
-    
+
     let totalCalories = 0;
     let totalProtein = 0;
     let totalFat = 0;
@@ -102,10 +207,10 @@ export class MealLogsService {
 
     return {
       date,
-      total_calories: totalCalories,
-      total_protein: totalProtein,
-      total_fat: totalFat,
-      total_carbs: totalCarbs,
+      total_calories: Math.round(totalCalories * 100) / 100,
+      total_protein: Math.round(totalProtein * 100) / 100,
+      total_fat: Math.round(totalFat * 100) / 100,
+      total_carbs: Math.round(totalCarbs * 100) / 100,
       logs,
     };
   }

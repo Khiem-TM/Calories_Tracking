@@ -52,9 +52,23 @@ export class MealLogsRepository implements IMealLogsRepository {
     });
   }
 
+  async updateLog(id: string, data: Partial<MealLog>): Promise<MealLog> {
+    await this.logRepo.update(id, data);
+    return this.logRepo.findOne({ where: { id }, relations: ['items', 'items.food'] }) as Promise<MealLog>;
+  }
+
+  async deleteLog(id: string): Promise<void> {
+    await this.logRepo.delete(id);
+  }
+
   async saveItem(item: Partial<MealLogItem>): Promise<MealLogItem> {
     const newItem = this.itemRepo.create(item);
     return this.itemRepo.save(newItem);
+  }
+
+  async updateItem(itemId: string, data: Partial<MealLogItem>): Promise<MealLogItem> {
+    await this.itemRepo.update(itemId, data);
+    return this.itemRepo.findOne({ where: { id: itemId } }) as Promise<MealLogItem>;
   }
 
   async removeItem(itemId: string): Promise<void> {
@@ -66,5 +80,20 @@ export class MealLogsRepository implements IMealLogsRepository {
       where: { id: itemId },
       relations: ['meal_log'],
     });
+  }
+
+  async updateImage(
+    id: string,
+    imageUrl: string | null,
+    imagePublicId: string | null,
+  ): Promise<MealLog> {
+    await this.logRepo.update(id, {
+      image_url: imageUrl,
+      image_public_id: imagePublicId,
+    });
+    return this.logRepo.findOne({
+      where: { id },
+      relations: ['items', 'items.food'],
+    }) as Promise<MealLog>;
   }
 }

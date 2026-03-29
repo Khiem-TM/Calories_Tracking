@@ -20,8 +20,11 @@ export class BodyProgressPhoto {
   @Column({ name: 'body_metric_id', nullable: true })
   bodyMetricId!: string;
 
-  @Column()
+  @Column({ type: 'text' })
   photoUrl!: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, default: null })
+  photoPublicId!: string | null;
 
   @Column({ default: 'front' })
   photoType!: string;

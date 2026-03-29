@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
@@ -12,6 +14,8 @@ import { ActivityLogsModule } from './modules/activity-logs/activity-logs.module
 import { StreaksModule } from './modules/streaks/streaks.module';
 import { TrainingModule } from './modules/training/training.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -19,6 +23,11 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+
+    ThrottlerModule.forRoot([
+      { name: 'short', ttl: 1000, limit: 10 },
+      { name: 'medium', ttl: 60000, limit: 100 },
+    ]),
 
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -30,8 +39,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
         const dbPass = configService.get<string>('DB_PASS', '123456');
         const dbName = configService.get<string>('DB_NAME', 'calories_tracker');
 
-        const connStr = `Connecting to ${dbUser}@${dbHost}:${dbPort}/${dbName}`;
-        console.log(connStr);
+        console.log(`Connecting to ${dbUser}@${dbHost}:${dbPort}/${dbName}`);
 
         return {
           type: 'postgres' as const,
@@ -55,8 +63,16 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     StreaksModule,
     TrainingModule,
     DashboardModule,
+    NotificationsModule,
+    AdminModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

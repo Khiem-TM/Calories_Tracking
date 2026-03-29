@@ -5,13 +5,18 @@ import { BodyProgressPhoto } from './entities/body-progress-photo.entity';
 import { BodyMetricsService } from './services/body-metrics.service';
 import { BodyMetricsController } from './controllers/body-metrics.controller';
 import { BodyMetricsRepository } from './repositories/body-metrics.repository';
-import { BODY_METRICS_REPOSITORY, BODY_PHOTOS_REPOSITORY } from './body-metrics.constants';
+import {
+  BODY_METRICS_REPOSITORY,
+  BODY_PHOTOS_REPOSITORY,
+} from './body-metrics.constants';
 import { UsersModule } from '../users/users.module';
+import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([BodyMetric, BodyProgressPhoto]),
     UsersModule,
+    CloudinaryModule,
   ],
   controllers: [BodyMetricsController],
   providers: [

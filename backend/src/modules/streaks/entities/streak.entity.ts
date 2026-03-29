@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   Unique,
 } from 'typeorm';
+import { StreakType } from '../../../common/enums/streak-type.enum';
 
 @Entity('streaks')
 @Unique(['user_id', 'streak_type'])
@@ -17,11 +18,11 @@ export class Streak {
   user_id!: string;
 
   @Column({
-    type: 'varchar',
-    length: 20,
-    default: 'login',
+    type: 'enum',
+    enum: StreakType,
+    default: StreakType.LOGIN,
   })
-  streak_type!: 'login' | 'calorie_goal' | 'workout';
+  streak_type!: StreakType;
 
   @Column({ default: 0 })
   current_streak!: number;

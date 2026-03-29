@@ -16,7 +16,10 @@ export class BodyMetricsRepository implements IBodyMetricsRepository {
     private readonly photoRepo: Repository<BodyProgressPhoto>,
   ) {}
 
-  async upsert(userId: string, dto: UpsertBodyMetricDto & { bmi?: number; bmr?: number; tdee?: number }): Promise<BodyMetric> {
+  async upsert(
+    userId: string,
+    dto: UpsertBodyMetricDto & { bmi?: number; bmr?: number; tdee?: number },
+  ): Promise<BodyMetric> {
     const existing = await this.repo.findOne({
       where: { userId, recordedDate: dto.recordedDate },
     });
@@ -52,7 +55,10 @@ export class BodyMetricsRepository implements IBodyMetricsRepository {
     return this.repo.save(metric);
   }
 
-  async findByUserAndDate(userId: string, date: string): Promise<BodyMetric | null> {
+  async findByUserAndDate(
+    userId: string,
+    date: string,
+  ): Promise<BodyMetric | null> {
     return this.repo.findOne({ where: { userId, recordedDate: date } });
   }
 
@@ -63,35 +69,58 @@ export class BodyMetricsRepository implements IBodyMetricsRepository {
     });
   }
 
-  async findHistory(userId: string, query: BodyMetricQueryDto): Promise<BodyMetric[]> {
-    const qb = this.repo.createQueryBuilder('bm')
+  async findHistory(
+    userId: string,
+    query: BodyMetricQueryDto,
+  ): Promise<BodyMetric[]> {
+    const qb = this.repo
+      .createQueryBuilder('bm')
       .where('bm.userId = :userId', { userId })
       .orderBy('bm.recordedDate', 'DESC')
       .take(query.limit ?? 30);
 
-    if (query.fromDate) qb.andWhere('bm.recordedDate >= :fromDate', { fromDate: query.fromDate });
-    if (query.toDate) qb.andWhere('bm.recordedDate <= :toDate', { toDate: query.toDate });
+    if (query.fromDate)
+      qb.andWhere('bm.recordedDate >= :fromDate', { fromDate: query.fromDate });
+    if (query.toDate)
+      qb.andWhere('bm.recordedDate <= :toDate', { toDate: query.toDate });
 
     return qb.getMany();
   }
 
-  async findRange(userId: string, fromDate: string, toDate: string): Promise<BodyMetric[]> {
+  async findRange(
+    userId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<BodyMetric[]> {
     return this.repo.find({
       where: { userId, recordedDate: Between(fromDate, toDate) as any },
       order: { recordedDate: 'ASC' },
     });
   }
 
-  async savePhoto(data: Partial<BodyProgressPhoto>): Promise<BodyProgressPhoto> {
+  async savePhoto(
+    data: Partial<BodyProgressPhoto>,
+  ): Promise<BodyProgressPhoto> {
     const photo = this.photoRepo.create(data);
     return this.photoRepo.save(photo);
   }
 
-  async findPhotosByUser(userId: string, limit: number): Promise<BodyProgressPhoto[]> {
+  async findPhotosByUser(
+    userId: string,
+    limit: number,
+  ): Promise<BodyProgressPhoto[]> {
     return this.photoRepo.find({
       where: { userId },
       order: { takenAt: 'DESC' },
       take: limit,
     });
+  }
+
+  async findPhotoById(id: string): Promise<BodyProgressPhoto | null> {
+    return this.photoRepo.findOne({ where: { id } });
+  }
+
+  async deletePhoto(id: string): Promise<void> {
+    await this.photoRepo.delete(id);
   }
 }

@@ -14,6 +14,9 @@ import { BodyMetricsService } from '../body-metrics/services/body-metrics.servic
 import { StreaksService } from '../streaks/streaks.service';
 import { UsersService } from '../users/users.service';
 import { TrainingGoalType } from '../../common/enums/training-goal-type.enum';
+import { StreakType } from '../../common/enums/streak-type.enum';
+import { UpdateTrainingGoalDto, UpdateWorkoutSessionDto } from './dto/update-training.dto';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Injectable()
 export class TrainingService {
@@ -27,10 +30,21 @@ export class TrainingService {
     private readonly bodyMetricsService: BodyMetricsService,
     private readonly streaksService: StreaksService,
     private readonly usersService: UsersService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async getExercises(query: ExerciseQueryDto) {
     return this.exerciseRepo.findAll(query);
+  }
+
+  async uploadExerciseImage(exerciseId: string, file: Express.Multer.File) {
+    const exercise = await this.exerciseRepo.findById(exerciseId);
+    if (!exercise) throw new NotFoundException('Exercise not found');
+    if (exercise.imagePublicId) {
+      await this.cloudinaryService.deleteFile(exercise.imagePublicId).catch(() => undefined);
+    }
+    const { url, publicId } = await this.cloudinaryService.uploadFile(file, 'exercises');
+    return this.exerciseRepo.updateImage(exerciseId, url, publicId);
   }
 
   async logWorkout(userId: string, dto: LogWorkoutDto) {
@@ -66,7 +80,7 @@ export class TrainingService {
     });
 
     // Update streak
-    await this.streaksService.updateActivity(userId, 'workout', dto.sessionDate);
+    await this.streaksService.updateActivity(userId, StreakType.WORKOUT, dto.sessionDate);
 
     return session;
   }
@@ -113,5 +127,37 @@ export class TrainingService {
 
   async getMyGoals(userId: string) {
     return this.goalRepo.findByUser(userId);
+  }
+
+  async updateGoal(userId: string, goalId: string, dto: UpdateTrainingGoalDto) {
+    const goal = await this.goalRepo.findById(goalId);
+    if (!goal || goal.userId !== userId) {
+      throw new NotFoundException('Training goal not found');
+    }
+    return this.goalRepo.update(goalId, dto);
+  }
+
+  async deleteGoal(userId: string, goalId: string): Promise<void> {
+    const goal = await this.goalRepo.findById(goalId);
+    if (!goal || goal.userId !== userId) {
+      throw new NotFoundException('Training goal not found');
+    }
+    await this.goalRepo.delete(goalId);
+  }
+
+  async updateWorkout(userId: string, sessionId: string, dto: UpdateWorkoutSessionDto) {
+    const session = await this.sessionRepo.findById(sessionId);
+    if (!session || session.userId !== userId) {
+      throw new NotFoundException('Workout session not found');
+    }
+    return this.sessionRepo.update(sessionId, dto);
+  }
+
+  async deleteWorkout(userId: string, sessionId: string): Promise<void> {
+    const session = await this.sessionRepo.findById(sessionId);
+    if (!session || session.userId !== userId) {
+      throw new NotFoundException('Workout session not found');
+    }
+    await this.sessionRepo.delete(sessionId);
   }
 }

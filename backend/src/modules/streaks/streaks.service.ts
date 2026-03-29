@@ -2,6 +2,7 @@ import { Injectable, Inject, Logger } from '@nestjs/common';
 import { STREAKS_REPOSITORY } from './streaks.constants';
 import type { IStreaksRepository } from './repositories/streaks.repository.interface';
 import { Streak } from './entities/streak.entity';
+import { StreakType } from '../../common/enums/streak-type.enum';
 
 @Injectable()
 export class StreaksService {
@@ -16,13 +17,13 @@ export class StreaksService {
     return this.repository.findByUser(userId);
   }
 
-  async updateActivity(userId: string, type: 'login' | 'calorie_goal' | 'workout', activityDate: string) {
+  async updateActivity(userId: string, type: StreakType, activityDate: string) {
     const streak = await this.repository.findOrCreate(userId, type);
     const lastDate = streak.last_activity_date;
     const today = activityDate;
 
     if (lastDate === today) {
-      return streak; // Already updated today
+      return streak;
     }
 
     const yesterday = new Date(today);
@@ -43,8 +44,8 @@ export class StreaksService {
 
   async resetExpiredStreaks() {
     this.logger.log('Starting nightly streaks expiration check...');
-    const types: ('login' | 'calorie_goal' | 'workout')[] = ['login', 'calorie_goal', 'workout'];
-    
+    const types: StreakType[] = [StreakType.LOGIN, StreakType.CALORIE_GOAL, StreakType.WORKOUT];
+
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split('T')[0];
@@ -52,9 +53,20 @@ export class StreaksService {
     for (const type of types) {
       const allStreaks = await this.repository.findAllByType(type);
       for (const streak of allStreaks) {
-        if (streak.last_activity_date && streak.last_activity_date < yesterdayStr && streak.current_streak > 0) {
-          this.logger.log(`Resetting ${type} streak for user ${streak.user_id} (Last activity: ${streak.last_activity_date})`);
-          await this.repository.updateStreak(streak.id, 0, streak.longest_streak, streak.last_activity_date);
+        if (
+          streak.last_activity_date &&
+          streak.last_activity_date < yesterdayStr &&
+          streak.current_streak > 0
+        ) {
+          this.logger.log(
+            `Resetting ${type} streak for user ${streak.user_id} (Last activity: ${streak.last_activity_date})`,
+          );
+          await this.repository.updateStreak(
+            streak.id,
+            0,
+            streak.longest_streak,
+            streak.last_activity_date,
+          );
         }
       }
     }
