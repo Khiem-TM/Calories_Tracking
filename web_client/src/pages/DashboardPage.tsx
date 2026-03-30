@@ -4,15 +4,24 @@ import { getDashboard } from '@/services/dashboardService'
 import { useUIStore } from '@/stores/uiStore'
 import { queryKeys } from '@/utils/queryKeys'
 import { useUserStore } from '@/stores/userStore'
+import { useAuthStore } from '@/stores/authStore'
 import { NutritionSummaryCard } from '@/features/nutrition/components/NutritionSummaryCard'
 import { ActivitySummaryCard } from '@/features/activity/components/ActivitySummaryCard'
 import { WorkoutHistoryCard } from '@/features/training/components/WorkoutHistoryCard'
 import { QuickAddModal } from '@/features/dashboard/components/QuickAddModal'
 import { Spinner } from '@/components/ui/Spinner'
 
+function getGreeting(): string {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good Morning'
+  if (h < 17) return 'Good Afternoon'
+  return 'Good Evening'
+}
+
 export default function DashboardPage() {
   const date = useUIStore((s) => s.selectedDate)
   const healthProfile = useUserStore((s) => s.healthProfile)
+  const user = useAuthStore((s) => s.user)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
 
   const { data, isLoading, isError } = useQuery({
@@ -50,6 +59,16 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-5 pb-20 md:pb-4">
+      {/* Greeting header */}
+      <div>
+        <h1 className="text-2xl font-semibold text-on-surface font-newsreader">
+          {getGreeting()}, {user?.display_name ?? 'there'} 👋
+        </h1>
+        <p className="text-sm text-on-surface-variant font-manrope mt-0.5">
+          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+        </p>
+      </div>
+
       {/* Streak banner */}
       {streak && streak.currentCount > 0 && (
         <div className="flex items-center gap-3 bg-tertiary-container/15 text-tertiary px-4 py-3 rounded-xl w-fit">

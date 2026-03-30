@@ -28,25 +28,25 @@ export default function NutritionPage() {
           <div className="flex items-center gap-4">
             <div className="text-center">
               <p className="text-2xl font-light text-on-surface font-newsreader data-value">
-                {Math.round(summary.total_calories)}
+                {Math.round(summary.total_calories ?? 0)}
               </p>
               <p className="text-xs text-on-surface-variant font-manrope">kcal</p>
             </div>
             <div className="flex-1 grid grid-cols-4 gap-3">
               <div className="bg-surface-lowest rounded-xl p-3 text-center">
-                <p className="text-sm font-semibold text-macroProtein data-value">{Math.round(summary.total_protein)}g</p>
+                <p className="text-sm font-semibold text-macroProtein data-value">{Math.round(summary.total_protein ?? 0)}g</p>
                 <p className="text-xs text-on-surface-variant font-manrope">protein</p>
               </div>
               <div className="bg-surface-lowest rounded-xl p-3 text-center">
-                <p className="text-sm font-semibold text-macroCarbs data-value">{Math.round(summary.total_carbs)}g</p>
+                <p className="text-sm font-semibold text-macroCarbs data-value">{Math.round(summary.total_carbs ?? 0)}g</p>
                 <p className="text-xs text-on-surface-variant font-manrope">carbs</p>
               </div>
               <div className="bg-surface-lowest rounded-xl p-3 text-center">
-                <p className="text-sm font-semibold text-macroFat data-value">{Math.round(summary.total_fat)}g</p>
+                <p className="text-sm font-semibold text-macroFat data-value">{Math.round(summary.total_fat ?? 0)}g</p>
                 <p className="text-xs text-on-surface-variant font-manrope">fat</p>
               </div>
               <div className="bg-surface-lowest rounded-xl p-3 text-center">
-                <p className="text-sm font-semibold text-macroFiber data-value">{Math.round(summary.total_fiber)}g</p>
+                <p className="text-sm font-semibold text-macroFiber data-value">{Math.round(summary.total_fiber ?? 0)}g</p>
                 <p className="text-xs text-on-surface-variant font-manrope">fiber</p>
               </div>
             </div>

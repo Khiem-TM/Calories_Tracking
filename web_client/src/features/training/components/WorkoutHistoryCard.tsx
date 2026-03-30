@@ -28,31 +28,41 @@ export function WorkoutHistoryCard({ session }: WorkoutHistoryCardProps) {
 
   return (
     <Card padding="sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-semibold text-slate-700">{session.exercise.name}</p>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${colorClass}`}>
-              {session.exercise.primaryMuscleGroup.replace('_', ' ')}
-            </span>
-          </div>
-          <div className="flex gap-3 mt-1 text-xs text-slate-400">
-            {session.durationMinutes > 0 && <span>{session.durationMinutes} min</span>}
-            {session.sets && session.repsPerSet && (
-              <span>{session.sets} × {session.repsPerSet} reps</span>
-            )}
-            {session.weightKg && <span>{session.weightKg} kg</span>}
-            <span>{formatDate(session.sessionDate)}</span>
-          </div>
-        </div>
-        {session.caloriesBurnedSnapshot > 0 && (
-          <div className="text-right shrink-0">
-            <p className="text-sm font-semibold text-slate-700">
-              {Math.round(session.caloriesBurnedSnapshot)}
-            </p>
-            <p className="text-xs text-slate-400">kcal</p>
-          </div>
+      <div className="flex items-start gap-3">
+        {/* Exercise thumbnail */}
+        {session.exercise.imageUrl && (
+          <img
+            src={session.exercise.imageUrl}
+            alt={session.exercise.name}
+            className="w-12 h-12 rounded-lg object-cover shrink-0"
+          />
         )}
+        <div className="flex-1 min-w-0 flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-semibold text-slate-700">{session.exercise.name}</p>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${colorClass}`}>
+                {session.exercise.primaryMuscleGroup.replace('_', ' ')}
+              </span>
+            </div>
+            <div className="flex gap-3 mt-1 text-xs text-slate-400">
+              {session.durationMinutes > 0 && <span>{session.durationMinutes} min</span>}
+              {session.sets && session.repsPerSet && (
+                <span>{session.sets} × {session.repsPerSet} reps</span>
+              )}
+              {session.weightKg && <span>{session.weightKg} kg</span>}
+              <span>{formatDate(session.sessionDate)}</span>
+            </div>
+          </div>
+          {session.caloriesBurnedSnapshot > 0 && (
+            <div className="text-right shrink-0">
+              <p className="text-sm font-semibold text-slate-700">
+                {Math.round(session.caloriesBurnedSnapshot)}
+              </p>
+              <p className="text-xs text-slate-400">kcal</p>
+            </div>
+          )}
+        </div>
       </div>
     </Card>
   )

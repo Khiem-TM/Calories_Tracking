@@ -15,8 +15,10 @@ export async function getNotifications(query?: NotificationQuery): Promise<Notif
 }
 
 export async function getUnreadCount(): Promise<number> {
-  const resp = await api.get<ApiResponse<UnreadCount>>('/notifications/unread-count')
-  return resp.data.data.count
+  const resp = await api.get<ApiResponse<number>>('/notifications/unread-count')
+  // Backend returns a plain number (not {count}), wrapped by ResponseInterceptor
+  const raw = resp.data.data
+  return typeof raw === 'number' ? raw : (raw as unknown as UnreadCount).count ?? 0
 }
 
 export async function markAsRead(id: string): Promise<Notification> {

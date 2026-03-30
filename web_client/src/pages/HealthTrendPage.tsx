@@ -3,21 +3,15 @@ import { WeightChart } from '@/components/charts/WeightChart'
 import { CalorieTrendChart } from '@/components/charts/CalorieTrendChart'
 import { TimeRangeFilter, getDateRange } from '@/features/progress/components/TimeRangeFilter'
 import type { TimeRange } from '@/features/progress/components/TimeRangeFilter'
-import { useWeeklyTrend } from '@/features/progress/hooks/useWeeklyTrend'
+import { useTrendDays } from '@/features/progress/hooks/useTrendDays'
 import { useBodyMetrics } from '@/features/progress/hooks/useBodyMetrics'
 import { Spinner } from '@/components/ui/Spinner'
-
-function getWeekStart(): string {
-  const d = new Date()
-  d.setDate(d.getDate() - 6)
-  return d.toISOString().split('T')[0]
-}
 
 export default function HealthTrendPage() {
   const [range, setRange] = useState<TimeRange>('7d')
   const { startDate, endDate } = getDateRange(range)
 
-  const { data: weeklyTrend, isLoading: trendLoading } = useWeeklyTrend(startDate ?? getWeekStart())
+  const { days, isLoading: trendLoading } = useTrendDays(range)
   const { data: metricsPage, isLoading: metricsLoading } = useBodyMetrics(startDate, endDate)
 
   const isLoading = trendLoading || metricsLoading
@@ -45,8 +39,8 @@ export default function HealthTrendPage() {
           {/* Calorie trend */}
           <div className="bg-surface-lowest rounded-2xl shadow-card p-6">
             <h2 className="text-base font-semibold text-on-surface font-newsreader mb-4">Calories</h2>
-            {weeklyTrend ? (
-              <CalorieTrendChart data={weeklyTrend} />
+            {days.length > 0 ? (
+              <CalorieTrendChart days={days} />
             ) : (
               <div className="py-10 text-center text-sm text-on-surface-variant font-manrope">
                 No calorie data available yet.

@@ -25,7 +25,7 @@ export class FoodsService {
       take: limit,
       skip: (page - 1) * limit,
     });
-    return { foods, total, page, limit };
+    return { items: foods, total, page, limit };
   }
 
   async findOne(id: string): Promise<Food> {

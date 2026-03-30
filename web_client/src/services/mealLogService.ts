@@ -56,3 +56,10 @@ export async function updateMealItem(
 export async function deleteMealItem(logId: string, itemId: string): Promise<void> {
   await api.delete(`/meal-logs/${logId}/items/${itemId}`)
 }
+
+export async function uploadMealImage(logId: string, file: File): Promise<MealLog> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const resp = await api.post<ApiResponse<MealLog>>(`/meal-logs/${logId}/image`, formData)
+  return resp.data.data
+}

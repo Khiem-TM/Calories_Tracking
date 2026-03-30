@@ -342,6 +342,7 @@ export interface Exercise {
   metValue: number
   instructions: string | null
   videoUrl: string | null
+  imageUrl: string | null
   createdAt: string
   updatedAt: string
 }

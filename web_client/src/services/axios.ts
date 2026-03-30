@@ -29,13 +29,9 @@ function getStoredTokens(): { accessToken: string | null; refreshToken: string |
 
 function clearStoredAuth() {
   try {
-    const raw = localStorage.getItem('auth-storage')
-    if (!raw) return
-    const parsed = JSON.parse(raw) as { state?: object; version?: number }
-    parsed.state = {}
-    localStorage.setItem('auth-storage', JSON.stringify(parsed))
-  } catch {
     localStorage.removeItem('auth-storage')
+  } catch {
+    // ignore
   }
 }
 

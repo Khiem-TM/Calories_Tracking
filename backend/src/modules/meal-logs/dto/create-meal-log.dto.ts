@@ -9,11 +9,13 @@ import {
   Min,
   IsEnum,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateMealLogItemDto {
   @IsUUID()
   food_id!: string;
 
+  @Type(() => Number)
   @IsNumber()
   @Min(0.01)
   quantity!: number;

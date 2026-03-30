@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { useLogWorkout } from '../hooks/useLogWorkout'
 import { useUIStore } from '@/stores/uiStore'
+import { useUserStore } from '@/stores/userStore'
 import type { Exercise, LogWorkoutDto } from '@/types'
 
 const schema = z.object({
@@ -19,28 +20,63 @@ const schema = z.object({
 interface WorkoutSessionFormProps {
   exercise: Exercise
   onBack: () => void
+  onSuccess?: () => void
 }
 
-export function WorkoutSessionForm({ exercise, onBack }: WorkoutSessionFormProps) {
+export function WorkoutSessionForm({ exercise, onBack, onSuccess }: WorkoutSessionFormProps) {
   const { mutate: logWorkout, isPending } = useLogWorkout()
   const selectedDate = useUIStore((s) => s.selectedDate)
+  const healthProfile = useUserStore((s) => s.healthProfile)
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, watch, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: { sessionDate: selectedDate, durationMinutes: 30 },
   })
 
   const isCardio = exercise.primaryMuscleGroup === 'cardio'
+  const durationValue = watch('durationMinutes') || 0
+  const bodyWeightKg = healthProfile?.initialWeightKg ?? 70
+  const estimatedCal = Math.round((exercise.metValue * bodyWeightKg * durationValue) / 60)
 
   const onSubmit = (data: Omit<LogWorkoutDto, 'exerciseId'>) => {
-    logWorkout({ exerciseId: exercise.id, ...data })
+    logWorkout(
+      { exerciseId: exercise.id, ...data },
+      { onSuccess: () => onSuccess?.() },
+    )
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-      <div>
-        <p className="text-sm font-semibold text-slate-700">{exercise.name}</p>
-        <p className="text-xs text-slate-400 capitalize">{exercise.primaryMuscleGroup.replace('_', ' ')} · {exercise.intensity} intensity</p>
+      {/* Exercise info panel */}
+      <div className="flex items-start gap-3 bg-slate-50 rounded-xl p-3">
+        {exercise.imageUrl && (
+          <img
+            src={exercise.imageUrl}
+            alt={exercise.name}
+            className="w-16 h-16 rounded-lg object-cover shrink-0"
+          />
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-slate-800 font-manrope">{exercise.name}</p>
+          <div className="flex gap-1.5 mt-1 flex-wrap">
+            <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full capitalize font-manrope">
+              {exercise.primaryMuscleGroup.replace('_', ' ')}
+            </span>
+            <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full capitalize font-manrope">
+              {exercise.intensity} intensity
+            </span>
+          </div>
+          {exercise.description && (
+            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed line-clamp-2 font-manrope">
+              {exercise.description}
+            </p>
+          )}
+          {durationValue > 0 && (
+            <p className="text-xs text-primary font-medium mt-1.5 font-manrope">
+              ~{estimatedCal} kcal estimated
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">

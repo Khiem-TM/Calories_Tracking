@@ -13,10 +13,18 @@ export function MealItemRow({ item, logId }: MealItemRowProps) {
     <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-slate-50 group">
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-slate-700 truncate">{item.food.name}</p>
-        <p className="text-xs text-slate-400">
-          {item.quantity_in_grams}g · P {Math.round(item.protein_snapshot)}g · C{' '}
-          {Math.round(item.carbs_snapshot)}g · F {Math.round(item.fat_snapshot)}g
-        </p>
+        <div className="flex gap-1 mt-0.5 flex-wrap items-center">
+          <span className="text-xs text-slate-400">{item.quantity_in_grams}g</span>
+          <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-manrope">
+            P {Math.round(item.protein_snapshot)}g
+          </span>
+          <span className="text-xs bg-green-50 text-green-600 px-1.5 py-0.5 rounded font-manrope">
+            C {Math.round(item.carbs_snapshot)}g
+          </span>
+          <span className="text-xs bg-yellow-50 text-yellow-700 px-1.5 py-0.5 rounded font-manrope">
+            F {Math.round(item.fat_snapshot)}g
+          </span>
+        </div>
       </div>
       <div className="flex items-center gap-2 ml-3">
         <span className="text-sm font-semibold text-slate-600">

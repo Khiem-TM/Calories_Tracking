@@ -80,24 +80,26 @@ function FoodDetail({
   existingLogId?: string
   onSuccess: () => void
 }) {
-  const [grams, setGrams] = useState(food.serving_size_g ?? 100)
+  const [grams, setGrams] = useState(Math.max(1, Number(food.serving_size_g) || 100))
   const { mutate: addItem, isPending } = useAddMealItem()
 
-  const scale = grams / 100
+  const safeGrams = isNaN(grams) || grams < 1 ? 1 : grams
+  const scale = safeGrams / 100
   const preview = {
-    calories: Math.round(food.calories_per_100g * scale),
-    protein: Math.round(food.protein_per_100g * scale),
-    carbs: Math.round(food.carbs_per_100g * scale),
-    fat: Math.round(food.fat_per_100g * scale),
+    calories: Math.round((food.calories_per_100g ?? 0) * scale),
+    protein: Math.round((food.protein_per_100g ?? 0) * scale),
+    carbs: Math.round((food.carbs_per_100g ?? 0) * scale),
+    fat: Math.round((food.fat_per_100g ?? 0) * scale),
     fiber: Math.round((food.fiber_per_100g ?? 0) * scale),
   }
 
   const handleAdd = () => {
+    const quantity = isNaN(grams) || grams < 1 ? 1 : grams
     addItem(
       {
         mealType,
         existingLogId,
-        item: { food_id: food.id, quantity: grams, serving_unit: 'g', source: 'manual' },
+        item: { food_id: food.id, quantity, serving_unit: 'g', source: 'manual' },
       },
       { onSuccess },
     )
@@ -115,8 +117,11 @@ function FoodDetail({
         type="number"
         min={1}
         max={9999}
-        value={grams}
-        onChange={(e) => setGrams(Number(e.target.value))}
+        value={isNaN(grams) ? '' : grams}
+        onChange={(e) => {
+          const val = Number(e.target.value)
+          setGrams(isNaN(val) ? 1 : Math.max(1, val))
+        }}
       />
 
       <div className="grid grid-cols-5 gap-2 text-center text-xs">

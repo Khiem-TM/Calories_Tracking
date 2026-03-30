@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useBodyMetrics } from '@/features/progress/hooks/useBodyMetrics'
 import { useLatestMetric } from '@/features/progress/hooks/useLatestMetric'
-import { useWeeklyTrend } from '@/features/progress/hooks/useWeeklyTrend'
+import { useTrendDays } from '@/features/progress/hooks/useTrendDays'
 import { MetricStatCard } from '@/features/progress/components/MetricStatCard'
 import { TimeRangeFilter, getDateRange, type TimeRange } from '@/features/progress/components/TimeRangeFilter'
 import { BodyMetricForm } from '@/features/progress/components/BodyMetricForm'
@@ -14,14 +14,6 @@ import { Card } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 import { useUserStore } from '@/stores/userStore'
 
-function getWeekStart(): string {
-  const d = new Date()
-  const day = d.getDay()
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  d.setDate(diff)
-  return d.toISOString().split('T')[0]
-}
-
 export default function ProgressPage() {
   const [timeRange, setTimeRange] = useState<TimeRange>('30d')
   const [formOpen, setFormOpen] = useState(false)
@@ -30,7 +22,7 @@ export default function ProgressPage() {
   const { startDate, endDate } = getDateRange(timeRange)
   const { data: metricsPage, isLoading } = useBodyMetrics(startDate, endDate)
   const { data: latest } = useLatestMetric()
-  const { data: weeklyTrend, isLoading: trendLoading } = useWeeklyTrend(getWeekStart())
+  const { days: trendDays, isLoading: trendLoading } = useTrendDays('7d')
 
   const metrics = metricsPage?.items ?? []
 
@@ -103,8 +95,8 @@ export default function ProgressPage() {
           <div className="flex justify-center py-8">
             <Spinner />
           </div>
-        ) : weeklyTrend ? (
-          <CalorieTrendChart data={weeklyTrend} caloriesGoal={healthProfile?.caloriesGoal} />
+        ) : trendDays.length > 0 ? (
+          <CalorieTrendChart days={trendDays} caloriesGoal={healthProfile?.caloriesGoal} />
         ) : (
           <div className="flex h-48 items-center justify-center text-sm text-on-surface-variant/60">
             No calorie data yet

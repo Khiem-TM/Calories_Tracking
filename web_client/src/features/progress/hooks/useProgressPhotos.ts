@@ -8,5 +8,6 @@ export function useProgressPhotos(limit = 30) {
     queryKey: progressPhotosKey(),
     queryFn: () => getPhotos(limit),
     staleTime: 60_000,
+    retry: false,
   })
 }

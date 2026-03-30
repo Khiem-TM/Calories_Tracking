@@ -101,30 +101,26 @@ export class MealLogsService {
     const food = await this.foodRepository.findOne({ where: { id: itemDto.food_id } });
     if (!food) throw new NotFoundException('Food not found');
 
-    let quantity_in_grams = itemDto.quantity;
-    if (
-      itemDto.serving_unit.toLowerCase() !== 'g' &&
-      food.serving_unit === itemDto.serving_unit
-    ) {
-      quantity_in_grams = itemDto.quantity * food.serving_size_g;
-    } else if (itemDto.serving_unit.toLowerCase() !== 'g') {
-      quantity_in_grams = itemDto.quantity * food.serving_size_g;
+    const servingSizeG = Number(food.serving_size_g) || 100;
+    let quantity_in_grams = Number(itemDto.quantity);
+    if (itemDto.serving_unit.toLowerCase() !== 'g') {
+      quantity_in_grams = Number(itemDto.quantity) * servingSizeG;
     }
 
     const ratio = quantity_in_grams / 100;
     const itemData: Partial<MealLogItem> = {
       meal_log_id: log.id,
       food_id: food.id,
-      quantity: itemDto.quantity,
+      quantity: Number(itemDto.quantity),
       serving_unit: itemDto.serving_unit,
       quantity_in_grams,
-      calories_snapshot: food.calories_per_100g * ratio,
-      protein_snapshot: food.protein_per_100g * ratio,
-      fat_snapshot: food.fat_per_100g * ratio,
-      carbs_snapshot: food.carbs_per_100g * ratio,
-      fiber_snapshot: (food.fiber_per_100g || 0) * ratio,
-      sugar_snapshot: (food.sugar_per_100g || 0) * ratio,
-      sodium_snapshot: (food.sodium_per_100g || 0) * ratio,
+      calories_snapshot: Number(food.calories_per_100g) * ratio,
+      protein_snapshot: Number(food.protein_per_100g) * ratio,
+      fat_snapshot: Number(food.fat_per_100g) * ratio,
+      carbs_snapshot: Number(food.carbs_per_100g) * ratio,
+      fiber_snapshot: Number(food.fiber_per_100g || 0) * ratio,
+      sugar_snapshot: Number(food.sugar_per_100g || 0) * ratio,
+      sodium_snapshot: Number(food.sodium_per_100g || 0) * ratio,
       source: itemDto.source || 'manual',
     };
 
@@ -149,12 +145,13 @@ export class MealLogsService {
     const food = await this.foodRepository.findOne({ where: { id: item.food_id } });
     if (!food) throw new NotFoundException('Food not found');
 
-    const newQuantity = dto.quantity ?? item.quantity;
-    const newUnit = dto.serving_unit ?? item.serving_unit;
+    const newQuantity = Number(dto.quantity ?? item.quantity);
+    const newUnit = dto.serving_unit ?? item.serving_unit ?? 'g';
+    const servingSizeG = Number(food.serving_size_g) || 100;
 
     let quantity_in_grams = newQuantity;
     if (newUnit.toLowerCase() !== 'g') {
-      quantity_in_grams = newQuantity * food.serving_size_g;
+      quantity_in_grams = newQuantity * servingSizeG;
     }
 
     const ratio = quantity_in_grams / 100;
@@ -162,13 +159,13 @@ export class MealLogsService {
       quantity: newQuantity,
       serving_unit: newUnit,
       quantity_in_grams,
-      calories_snapshot: food.calories_per_100g * ratio,
-      protein_snapshot: food.protein_per_100g * ratio,
-      fat_snapshot: food.fat_per_100g * ratio,
-      carbs_snapshot: food.carbs_per_100g * ratio,
-      fiber_snapshot: (food.fiber_per_100g || 0) * ratio,
-      sugar_snapshot: (food.sugar_per_100g || 0) * ratio,
-      sodium_snapshot: (food.sodium_per_100g || 0) * ratio,
+      calories_snapshot: Number(food.calories_per_100g) * ratio,
+      protein_snapshot: Number(food.protein_per_100g) * ratio,
+      fat_snapshot: Number(food.fat_per_100g) * ratio,
+      carbs_snapshot: Number(food.carbs_per_100g) * ratio,
+      fiber_snapshot: Number(food.fiber_per_100g || 0) * ratio,
+      sugar_snapshot: Number(food.sugar_per_100g || 0) * ratio,
+      sodium_snapshot: Number(food.sodium_per_100g || 0) * ratio,
     });
   }
 
@@ -195,6 +192,7 @@ export class MealLogsService {
     let totalProtein = 0;
     let totalFat = 0;
     let totalCarbs = 0;
+    let totalFiber = 0;
 
     for (const log of logs) {
       for (const item of log.items || []) {
@@ -202,6 +200,7 @@ export class MealLogsService {
         totalProtein += Number(item.protein_snapshot || 0);
         totalFat += Number(item.fat_snapshot || 0);
         totalCarbs += Number(item.carbs_snapshot || 0);
+        totalFiber += Number(item.fiber_snapshot || 0);
       }
     }
 
@@ -211,6 +210,7 @@ export class MealLogsService {
       total_protein: Math.round(totalProtein * 100) / 100,
       total_fat: Math.round(totalFat * 100) / 100,
       total_carbs: Math.round(totalCarbs * 100) / 100,
+      total_fiber: Math.round(totalFiber * 100) / 100,
       logs,
     };
   }

@@ -108,7 +108,7 @@ export class AuthService {
 
       const access_token = this.jwtService.sign(
         { sub: user.id, email: user.email, role: user.role },
-        { secret: process.env.JWT_SECRET || 'khiemhehe', expiresIn: '15m' },
+        { secret: process.env.JWT_SECRET || 'khiemhehe', expiresIn: '7d' },
       );
 
       return { access_token };
@@ -219,7 +219,7 @@ export class AuthService {
   private async generateAuthResponse(user: User): Promise<AuthResponseDto> {
     const access_token = this.jwtService.sign(
       { sub: user.id, email: user.email, role: user.role },
-      { secret: process.env.JWT_SECRET || 'khiemhehe', expiresIn: '15m' },
+      { secret: process.env.JWT_SECRET || 'khiemhehe', expiresIn: '7d' },
     );
 
     const refresh_token = this.jwtService.sign(

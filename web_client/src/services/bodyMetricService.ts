@@ -51,9 +51,7 @@ export async function getPhotos(limit = 10): Promise<BodyProgressPhoto[]> {
 }
 
 export async function uploadPhoto(formData: FormData): Promise<BodyProgressPhoto> {
-  const resp = await api.post<ApiResponse<BodyProgressPhoto>>('/body-metrics/photos', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  const resp = await api.post<ApiResponse<BodyProgressPhoto>>('/body-metrics/photos', formData)
   return resp.data.data
 }
 

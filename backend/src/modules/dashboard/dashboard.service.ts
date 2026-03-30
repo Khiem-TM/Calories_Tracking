@@ -32,6 +32,7 @@ export class DashboardService {
         total_protein: meals.total_protein,
         total_fat: meals.total_fat,
         total_carbs: meals.total_carbs,
+        total_fiber: meals.total_fiber ?? 0,
         meal_logs: meals.logs,
       },
       activity: {
