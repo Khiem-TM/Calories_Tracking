@@ -41,11 +41,17 @@ export class Exercise {
   @Column({ name: 'video_url', type: 'text', nullable: true })
   videoUrl!: string;
 
-  @Column({ name: 'image_url', type: 'text', nullable: true, default: null })
-  imageUrl!: string | null;
+  @Column({ name: 'image_avt_url', type: 'text', nullable: true, default: null })
+  imageAvtUrl!: string | null;
 
-  @Column({ name: 'image_public_id', type: 'varchar', length: 255, nullable: true, default: null })
-  imagePublicId!: string | null;
+  @Column({ name: 'image_avt_public_id', type: 'varchar', length: 255, nullable: true, default: null })
+  imageAvtPublicId!: string | null;
+
+  @Column({ name: 'image_url', type: 'text', array: true, nullable: true, default: null })
+  imageUrl!: string[] | null;
+
+  @Column({ name: 'image_public_ids', type: 'text', array: true, nullable: true, default: null })
+  imagePublicIds!: string[] | null;
 
   @CreateDateColumn()
   createdAt!: Date;

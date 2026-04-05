@@ -1,16 +1,12 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'path';
 import { AppModule } from './app.module';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
-import { RolesGuard } from './common/guards/roles.guard';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), { prefix: '/uploads' });
 
   app.enableCors({
     origin: '*',
@@ -31,7 +27,6 @@ async function bootstrap() {
     new ClassSerializerInterceptor(reflector),
     new ResponseInterceptor(),
   );
-  app.useGlobalGuards(new RolesGuard(reflector));
 
   const config = new DocumentBuilder()
     .setTitle('Calories Tracker API')

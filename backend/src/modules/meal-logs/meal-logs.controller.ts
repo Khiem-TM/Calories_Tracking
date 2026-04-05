@@ -9,15 +9,12 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
-  ParseFilePipe,
-  MaxFileSizeValidator,
-  FileTypeValidator,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { Patch } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
+import { buildMulterOptions } from '../../common/utils/multer.config';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { MealLogsService } from './meal-logs.service';
 import {
@@ -53,10 +50,10 @@ export class MealLogsController {
     return this.mealLogsService.findAllByUser(user.sub, date);
   }
 
-  @ApiOperation({ summary: 'Get daily nutrition summary' })
-  @ApiQuery({ name: 'date', required: true, example: '2024-01-15' })
+  @ApiOperation({ summary: 'Get daily nutrition summary (defaults to today)' })
+  @ApiQuery({ name: 'date', required: false, example: '2024-01-15' })
   @Get('summary')
-  getSummary(@CurrentUser() user: JwtPayload, @Query('date') date: string) {
+  getSummary(@CurrentUser() user: JwtPayload, @Query('date') date?: string) {
     return this.mealLogsService.getDailySummary(user.sub, date);
   }
 
@@ -103,19 +100,11 @@ export class MealLogsController {
     },
   })
   @Post(':id/image')
-  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  @UseInterceptors(FileInterceptor('file', buildMulterOptions('meal-logs')))
   uploadImage(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
-          new FileTypeValidator({ fileType: /image\/(jpeg|jpg|png|webp)/ }),
-        ],
-      }),
-    )
-    file: Express.Multer.File,
+    @UploadedFile() file: Express.Multer.File,
   ) {
     return this.mealLogsService.uploadImage(user.sub, id, file);
   }

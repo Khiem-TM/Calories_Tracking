@@ -9,8 +9,9 @@ import {
 } from 'class-validator';
 
 export class UpsertBodyMetricDto {
+  @IsOptional()
   @IsDateString()
-  recordedDate!: string;
+  recordedAt?: string;
 
   @IsOptional()
   @IsNumber()

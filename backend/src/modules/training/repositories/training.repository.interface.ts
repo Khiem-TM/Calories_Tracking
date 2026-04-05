@@ -6,7 +6,9 @@ import { MuscleGroup } from '../../../common/enums/muscle-group.enum';
 export interface IExercisesRepository {
   findAll(query: { name?: string, muscleGroup?: MuscleGroup }): Promise<Exercise[]>;
   findById(id: string): Promise<Exercise | null>;
-  updateImage(id: string, imageUrl: string | null, imagePublicId: string | null): Promise<Exercise>;
+  updateAvtImage(id: string, imageAvtUrl: string | null, imageAvtPublicId: string | null): Promise<Exercise>;
+  addImageToGallery(id: string, imageUrl: string, imagePublicId: string): Promise<Exercise>;
+  removeImageFromGallery(id: string, imagePublicId: string): Promise<Exercise>;
 }
 
 export interface IWorkoutSessionsRepository {

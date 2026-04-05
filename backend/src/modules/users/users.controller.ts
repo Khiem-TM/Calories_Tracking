@@ -30,13 +30,17 @@ import { UpdateHealthProfileDto } from './dto/update-health-profile.dto';
 import { User } from './entities/user.entity';
 import { UserHealthProfile } from './entities/user-health-profile.entity';
 import { buildMulterOptions } from '../../common/utils/multer.config';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @ApiTags('users')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   @ApiOperation({ summary: 'Get current user profile' })
   @Get('me')
@@ -74,8 +78,8 @@ export class UsersController {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
-    const avatarUrl = `/uploads/avatars/${file.filename}`;
-    return this.usersService.updateProfile(user.sub, { avatar_url: avatarUrl });
+    const { url } = await this.cloudinaryService.uploadFile(file, 'avatars');
+    return this.usersService.updateProfile(user.sub, { avatar_url: url });
   }
 
   @ApiOperation({ summary: 'Deactivate account' })

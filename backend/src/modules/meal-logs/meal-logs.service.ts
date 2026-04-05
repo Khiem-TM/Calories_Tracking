@@ -12,7 +12,7 @@ import { UploadImageDto } from './dto/upload-image.dto';
 import { Food } from '../foods/entities/food.entity';
 import { MEAL_LOGS_REPOSITORY } from './meal-logs.constants';
 import type { IMealLogsRepository } from './repositories/meal-logs.repository.interface';
-import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { LocalUploadService } from '../local-upload/local-upload.service';
 
 @Injectable()
 export class MealLogsService {
@@ -21,13 +21,14 @@ export class MealLogsService {
     private readonly repository: IMealLogsRepository,
     @InjectRepository(Food)
     private readonly foodRepository: Repository<Food>,
-    private readonly cloudinaryService: CloudinaryService,
+    private readonly localUploadService: LocalUploadService,
   ) {}
 
   async create(userId: string, dto: CreateMealLogDto): Promise<MealLog> {
+    const logDate = dto.log_date || new Date().toISOString().split('T')[0];
     const log = await this.repository.findOrCreate(
       userId,
-      dto.log_date,
+      logDate,
       dto.meal_type,
     );
 
@@ -41,7 +42,8 @@ export class MealLogsService {
   }
 
   async findAllByUser(userId: string, date?: string): Promise<MealLog[]> {
-    return this.repository.findByUser(userId, date);
+    const effectiveDate = date || new Date().toISOString().split('T')[0];
+    return this.repository.findByUser(userId, effectiveDate);
   }
 
   async findOne(userId: string, id: string): Promise<MealLog> {
@@ -60,7 +62,7 @@ export class MealLogsService {
   async deleteLog(userId: string, id: string): Promise<void> {
     const log = await this.findOne(userId, id);
     if (log.image_public_id) {
-      await this.cloudinaryService.deleteFile(log.image_public_id).catch(() => undefined);
+      await this.localUploadService.deleteFile(log.image_public_id);
     }
     return this.repository.deleteLog(id);
   }
@@ -72,9 +74,9 @@ export class MealLogsService {
   ): Promise<MealLog> {
     const log = await this.findOne(userId, id);
     if (log.image_public_id) {
-      await this.cloudinaryService.deleteFile(log.image_public_id).catch(() => undefined);
+      await this.localUploadService.deleteFile(log.image_public_id);
     }
-    const { url, publicId } = await this.cloudinaryService.uploadFile(file, 'meal-logs');
+    const { url, publicId } = await this.localUploadService.uploadBuffer(file.buffer, 'meal-logs');
     return this.repository.updateImage(id, url, publicId);
   }
 
@@ -85,9 +87,9 @@ export class MealLogsService {
   ): Promise<MealLog> {
     const log = await this.findOne(userId, id);
     if (log.image_public_id) {
-      await this.cloudinaryService.deleteFile(log.image_public_id).catch(() => undefined);
+      await this.localUploadService.deleteFile(log.image_public_id);
     }
-    const { url, publicId } = await this.cloudinaryService.uploadBase64(dto.imageData, 'meal-logs');
+    const { url, publicId } = await this.localUploadService.uploadBase64(dto.imageData, 'meal-logs');
     return this.repository.updateImage(id, url, publicId);
   }
 
@@ -185,8 +187,9 @@ export class MealLogsService {
     await this.repository.removeItem(itemId);
   }
 
-  async getDailySummary(userId: string, date: string) {
-    const logs = await this.findAllByUser(userId, date);
+  async getDailySummary(userId: string, date?: string) {
+    const effectiveDate = date || new Date().toISOString().split('T')[0];
+    const logs = await this.findAllByUser(userId, effectiveDate);
 
     let totalCalories = 0;
     let totalProtein = 0;
@@ -205,7 +208,7 @@ export class MealLogsService {
     }
 
     return {
-      date,
+      date: effectiveDate,
       total_calories: Math.round(totalCalories * 100) / 100,
       total_protein: Math.round(totalProtein * 100) / 100,
       total_fat: Math.round(totalFat * 100) / 100,

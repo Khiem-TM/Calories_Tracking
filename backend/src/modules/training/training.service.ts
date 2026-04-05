@@ -16,7 +16,7 @@ import { UsersService } from '../users/users.service';
 import { TrainingGoalType } from '../../common/enums/training-goal-type.enum';
 import { StreakType } from '../../common/enums/streak-type.enum';
 import { UpdateTrainingGoalDto, UpdateWorkoutSessionDto } from './dto/update-training.dto';
-import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { LocalUploadService } from '../local-upload/local-upload.service';
 
 @Injectable()
 export class TrainingService {
@@ -30,21 +30,35 @@ export class TrainingService {
     private readonly bodyMetricsService: BodyMetricsService,
     private readonly streaksService: StreaksService,
     private readonly usersService: UsersService,
-    private readonly cloudinaryService: CloudinaryService,
+    private readonly localUploadService: LocalUploadService,
   ) {}
 
   async getExercises(query: ExerciseQueryDto) {
     return this.exerciseRepo.findAll(query);
   }
 
-  async uploadExerciseImage(exerciseId: string, file: Express.Multer.File) {
+  async uploadExerciseAvtImage(exerciseId: string, file: Express.Multer.File) {
     const exercise = await this.exerciseRepo.findById(exerciseId);
     if (!exercise) throw new NotFoundException('Exercise not found');
-    if (exercise.imagePublicId) {
-      await this.cloudinaryService.deleteFile(exercise.imagePublicId).catch(() => undefined);
+    if (exercise.imageAvtPublicId) {
+      await this.localUploadService.deleteFile(exercise.imageAvtPublicId);
     }
-    const { url, publicId } = await this.cloudinaryService.uploadFile(file, 'exercises');
-    return this.exerciseRepo.updateImage(exerciseId, url, publicId);
+    const { url, publicId } = await this.localUploadService.uploadBuffer(file.buffer, 'exercises');
+    return this.exerciseRepo.updateAvtImage(exerciseId, url, publicId);
+  }
+
+  async addExerciseGalleryImage(exerciseId: string, file: Express.Multer.File) {
+    const exercise = await this.exerciseRepo.findById(exerciseId);
+    if (!exercise) throw new NotFoundException('Exercise not found');
+    const { url, publicId } = await this.localUploadService.uploadBuffer(file.buffer, 'exercises');
+    return this.exerciseRepo.addImageToGallery(exerciseId, url, publicId);
+  }
+
+  async removeExerciseGalleryImage(exerciseId: string, imagePublicId: string) {
+    const exercise = await this.exerciseRepo.findById(exerciseId);
+    if (!exercise) throw new NotFoundException('Exercise not found');
+    await this.localUploadService.deleteFile(imagePublicId);
+    return this.exerciseRepo.removeImageFromGallery(exerciseId, imagePublicId);
   }
 
   async logWorkout(userId: string, dto: LogWorkoutDto) {

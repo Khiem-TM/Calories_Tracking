@@ -2,10 +2,22 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from './ProtectedRoute'
 import { OnboardingGuard } from './OnboardingGuard'
 import { PublicOnlyRoute } from './PublicOnlyRoute'
+import { AdminProtectedRoute } from './AdminProtectedRoute'
+import { AdminPublicRoute } from './AdminPublicRoute'
 
 // Lazy imports for code splitting
 import { lazy, Suspense } from 'react'
 import { Spinner } from '@/components/ui/Spinner'
+
+// Admin pages
+const AdminLoginPage = lazy(() => import('@/pages/admin/AdminLoginPage'))
+const AdminLayout = lazy(() => import('@/components/admin/AdminLayout'))
+const AdminDashboardPage = lazy(() => import('@/pages/admin/AdminDashboardPage'))
+const AdminUsersPage = lazy(() => import('@/pages/admin/AdminUsersPage'))
+const AdminUserDetailPage = lazy(() => import('@/pages/admin/AdminUserDetailPage'))
+const AdminFoodsPage = lazy(() => import('@/pages/admin/AdminFoodsPage'))
+const AdminBlogsPage = lazy(() => import('@/pages/admin/AdminBlogsPage'))
+const AdminExercisesPage = lazy(() => import('@/pages/admin/AdminExercisesPage'))
 
 const LoginPage = lazy(() => import('@/pages/LoginPage'))
 const RegisterPage = lazy(() => import('@/pages/RegisterPage'))
@@ -175,6 +187,88 @@ export const router = createBrowserRouter([
                     ),
                   },
                 ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  // ─── Admin routes (fully isolated) ──────────────────────────────────────────
+  {
+    path: 'admin',
+    children: [
+      {
+        element: <AdminPublicRoute />,
+        children: [
+          {
+            path: 'login',
+            element: (
+              <SuspenseWrapper>
+                <AdminLoginPage />
+              </SuspenseWrapper>
+            ),
+          },
+        ],
+      },
+      {
+        element: <AdminProtectedRoute />,
+        children: [
+          {
+            element: (
+              <SuspenseWrapper>
+                <AdminLayout />
+              </SuspenseWrapper>
+            ),
+            children: [
+              { index: true, element: <Navigate to="/admin/dashboard" replace /> },
+              {
+                path: 'dashboard',
+                element: (
+                  <SuspenseWrapper>
+                    <AdminDashboardPage />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'users',
+                element: (
+                  <SuspenseWrapper>
+                    <AdminUsersPage />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'users/:id',
+                element: (
+                  <SuspenseWrapper>
+                    <AdminUserDetailPage />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'foods',
+                element: (
+                  <SuspenseWrapper>
+                    <AdminFoodsPage />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'blogs',
+                element: (
+                  <SuspenseWrapper>
+                    <AdminBlogsPage />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: 'exercises',
+                element: (
+                  <SuspenseWrapper>
+                    <AdminExercisesPage />
+                  </SuspenseWrapper>
+                ),
               },
             ],
           },

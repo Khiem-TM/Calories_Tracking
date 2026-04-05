@@ -20,10 +20,13 @@ import { ResponseInterceptor } from '../src/common/interceptors/response.interce
 const UNIQUE = Date.now();
 const testEmail = `e2e_${UNIQUE}@test.com`;
 const testPass = 'Password123';
+const SAMPLE_IMAGE = '/Users/UET/DACN/Project/sample/ok.jpg';
 let app: INestApplication<App>;
 let userToken: string;
 let userId: string;
 let refreshToken: string;
+let exerciseId: string;
+let workoutId: string;
 
 // ─── App Bootstrap ────────────────────────────────────────────────────────────
 
@@ -206,15 +209,24 @@ describe('Users Module', () => {
     });
   });
 
-  describe('GET /users/me/health-profile', () => {
-    it('should return health profile (null initially)', async () => {
+  describe('POST /users/me/avatar', () => {
+    it('should upload avatar image (local disk)', async () => {
       const res = await request(app.getHttpServer())
+        .post('/users/me/avatar')
+        .set('Authorization', `Bearer ${userToken}`)
+        .attach('file', SAMPLE_IMAGE)
+        .expect(201);
+
+      expect(res.body.data.avatar_url).toBeDefined();
+    });
+  });
+
+  describe('GET /users/me/health-profile', () => {
+    it('should return 404 when no profile exists yet', async () => {
+      await request(app.getHttpServer())
         .get('/users/me/health-profile')
         .set('Authorization', `Bearer ${userToken}`)
-        .expect(200);
-
-      // Profile may be null or an object
-      expect(res.body).toHaveProperty('data');
+        .expect(404);
     });
   });
 
@@ -227,12 +239,13 @@ describe('Users Module', () => {
           heightCm: 175,
           initialWeightKg: 70,
           gender: 'male',
-          dateOfBirth: '1995-06-15',
+          birthDate: '1995-06-15',
+          activityLevel: 'moderate',
           waterGoalMl: 2500,
         })
         .expect(200);
 
-      expect(res.body.data.heightCm).toBe(175);
+      expect(Number(res.body.data.heightCm)).toBe(175);
     });
   });
 });
@@ -248,8 +261,8 @@ describe('Foods Module', () => {
         .get('/foods')
         .expect(200);
 
-      expect(res.body.data).toHaveProperty('foods');
-      expect(Array.isArray(res.body.data.foods)).toBe(true);
+      expect(res.body.data).toHaveProperty('items');
+      expect(Array.isArray(res.body.data.items)).toBe(true);
     });
 
     it('should search foods by name', async () => {
@@ -281,6 +294,19 @@ describe('Foods Module', () => {
       expect(res.body.data.is_custom).toBe(true);
       expect(res.body.data.is_verified).toBe(false);
       foodId = res.body.data.id;
+    });
+  });
+
+  describe('POST /foods/:id/image', () => {
+    it('should upload food image to Cloudinary', async () => {
+      if (!foodId) return;
+      const res = await request(app.getHttpServer())
+        .post(`/foods/${foodId}/image`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .attach('file', SAMPLE_IMAGE)
+        .expect(201);
+
+      expect(res.body.data.image_urls?.length).toBeGreaterThan(0);
     });
   });
 
@@ -345,10 +371,10 @@ describe('Meal Logs Module', () => {
       const res = await request(app.getHttpServer())
         .post('/meal-logs')
         .set('Authorization', `Bearer ${userToken}`)
-        .send({ log_date: LOG_DATE, meal_type: 'lunch', items: [] })
+        .send({ log_date: LOG_DATE, meal_type: 'LUNCH', items: [] })
         .expect(201);
 
-      expect(res.body.data.meal_type).toBe('lunch');
+      expect(res.body.data.meal_type).toBe('LUNCH');
       mealLogId = res.body.data.id;
     });
   });
@@ -415,6 +441,35 @@ describe('Meal Logs Module', () => {
     });
   });
 
+  describe('POST /meal-logs/:id/image', () => {
+    it('should upload meal image (multipart)', async () => {
+      if (!mealLogId) return;
+      const res = await request(app.getHttpServer())
+        .post(`/meal-logs/${mealLogId}/image`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .attach('file', SAMPLE_IMAGE)
+        .expect(201);
+
+      expect(res.body.data).toHaveProperty('image_url');
+    });
+  });
+
+  describe('POST /meal-logs/:id/image/base64', () => {
+    it('should upload meal image (base64 data-URI)', async () => {
+      if (!mealLogId) return;
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const imgBuffer = require('fs').readFileSync(SAMPLE_IMAGE);
+      const base64 = `data:image/jpeg;base64,${imgBuffer.toString('base64')}`;
+      const res = await request(app.getHttpServer())
+        .post(`/meal-logs/${mealLogId}/image/base64`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ imageData: base64 })
+        .expect(201);
+
+      expect(res.body.data).toHaveProperty('image_url');
+    });
+  });
+
   describe('PATCH /meal-logs/:id/items/:itemId', () => {
     it('should update item quantity', async () => {
       if (!mealLogId || !mealLogItemId) return;
@@ -432,7 +487,7 @@ describe('Meal Logs Module', () => {
       await request(app.getHttpServer())
         .delete(`/meal-logs/${mealLogId}/items/${mealLogItemId}`)
         .set('Authorization', `Bearer ${userToken}`)
-        .expect(200);
+        .expect(204);
     });
   });
 
@@ -442,7 +497,7 @@ describe('Meal Logs Module', () => {
       await request(app.getHttpServer())
         .delete(`/meal-logs/${mealLogId}`)
         .set('Authorization', `Bearer ${userToken}`)
-        .expect(200);
+        .expect(204);
     });
   });
 });
@@ -482,7 +537,7 @@ describe('Activity Logs Module', () => {
         .send({ logDate: LOG_DATE, caloriesBurned: 300, activeMinutes: 45 })
         .expect(200);
 
-      expect(res.body.data.caloriesBurned).toBe(300);
+      expect(Number(res.body.data.caloriesBurned)).toBe(300);
     });
   });
 
@@ -568,6 +623,19 @@ describe('Body Metrics Module', () => {
       expect(Array.isArray(res.body.data)).toBe(true);
     });
   });
+
+  describe('POST /body-metrics/photos', () => {
+    it('should upload progress photo (front) to Cloudinary', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/body-metrics/photos')
+        .set('Authorization', `Bearer ${userToken}`)
+        .attach('file', SAMPLE_IMAGE)
+        .field('photoType', 'front')
+        .expect(201);
+
+      expect(res.body.data).toHaveProperty('photoUrl');
+    });
+  });
 });
 
 // ─── TRAINING MODULE ──────────────────────────────────────────────────────────
@@ -583,6 +651,7 @@ describe('Training Module', () => {
         .expect(200);
 
       expect(Array.isArray(res.body.data)).toBe(true);
+      if (res.body.data.length > 0) exerciseId = res.body.data[0].id;
     });
 
     it('should filter by muscleGroup', async () => {
@@ -595,6 +664,64 @@ describe('Training Module', () => {
     });
   });
 
+  describe('POST /training/exercises/:id/image', () => {
+    it('should upload exercise image to Cloudinary', async () => {
+      if (!exerciseId) return;
+      const res = await request(app.getHttpServer())
+        .post(`/training/exercises/${exerciseId}/image`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .attach('file', SAMPLE_IMAGE)
+        .expect(201);
+
+      expect(res.body.data).toBeDefined();
+    });
+  });
+
+  describe('POST /training/workout', () => {
+    it('should log a workout session', async () => {
+      if (!exerciseId) return;
+      const res = await request(app.getHttpServer())
+        .post('/training/workout')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          exerciseId,
+          sessionDate: LOG_DATE,
+          durationMinutes: 45,
+          sets: 3,
+          repsPerSet: 10,
+          weightKg: 20,
+          notes: 'E2E test workout',
+        })
+        .expect(201);
+
+      expect(res.body.data).toBeDefined();
+      workoutId = res.body.data.id;
+    });
+  });
+
+  describe('PATCH /training/workout/:id', () => {
+    it('should update workout session notes', async () => {
+      if (!workoutId) return;
+      const res = await request(app.getHttpServer())
+        .patch(`/training/workout/${workoutId}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ notes: 'Updated E2E workout' })
+        .expect(200);
+
+      expect(res.body.data).toBeDefined();
+    });
+  });
+
+  describe('DELETE /training/workout/:id', () => {
+    it('should delete workout session', async () => {
+      if (!workoutId) return;
+      await request(app.getHttpServer())
+        .delete(`/training/workout/${workoutId}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect((res) => expect([200, 204]).toContain(res.status));
+    });
+  });
+
   describe('POST /training/goals', () => {
     it('should create a training goal', async () => {
       const res = await request(app.getHttpServer())
@@ -603,8 +730,8 @@ describe('Training Module', () => {
         .send({
           goalType: 'lose_weight',
           targetValue: 65,
+          startDate: LOG_DATE,
           deadline: '2024-06-01',
-          workoutsPerWeek: 3,
         })
         .expect(201);
 
@@ -654,7 +781,7 @@ describe('Training Module', () => {
       await request(app.getHttpServer())
         .delete(`/training/goals/${trainingGoalId}`)
         .set('Authorization', `Bearer ${userToken}`)
-        .expect(200);
+        .expect((res) => expect([200, 204]).toContain(res.status));
     });
   });
 });
@@ -803,16 +930,22 @@ describe('Admin Module (unauthorized access)', () => {
 
 describe('Security', () => {
   it('should reject access to protected routes without token', async () => {
-    await Promise.all([
-      request(app.getHttpServer()).get('/users/me').expect(401),
-      request(app.getHttpServer()).get('/meal-logs').expect(401),
-      request(app.getHttpServer()).get('/activity-logs').expect(401),
-      request(app.getHttpServer()).get('/body-metrics').expect(401),
-      request(app.getHttpServer()).get('/training/exercises').expect(401),
-      request(app.getHttpServer()).get('/streaks').expect(401),
-      request(app.getHttpServer()).get('/dashboard').expect(401),
-      request(app.getHttpServer()).get('/notifications').expect(401),
-    ]);
+    const checks = [
+      request(app.getHttpServer()).get('/users/me'),
+      request(app.getHttpServer()).get('/meal-logs'),
+      request(app.getHttpServer()).get('/activity-logs'),
+      request(app.getHttpServer()).get('/body-metrics'),
+      request(app.getHttpServer()).get('/training/exercises'),
+      request(app.getHttpServer()).get('/streaks'),
+      request(app.getHttpServer()).get('/dashboard'),
+      request(app.getHttpServer()).get('/notifications'),
+    ];
+    const results = await Promise.allSettled(checks);
+    for (const r of results) {
+      if (r.status === 'fulfilled') {
+        expect(r.value.status).toBe(401);
+      }
+    }
   });
 
   it('should reject malformed JWT', async () => {

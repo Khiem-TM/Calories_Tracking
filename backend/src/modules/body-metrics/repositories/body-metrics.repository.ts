@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository } from 'typeorm';
 import { BodyMetric } from '../entities/body-metric.entity';
 import { BodyProgressPhoto } from '../entities/body-progress-photo.entity';
 import { IBodyMetricsRepository } from './body-metrics.repository.interface';
@@ -20,9 +20,15 @@ export class BodyMetricsRepository implements IBodyMetricsRepository {
     userId: string,
     dto: UpsertBodyMetricDto & { bmi?: number; bmr?: number; tdee?: number },
   ): Promise<BodyMetric> {
-    const existing = await this.repo.findOne({
-      where: { userId, recordedDate: dto.recordedDate },
-    });
+    const dateStr = dto.recordedAt
+      ? new Date(dto.recordedAt).toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0];
+
+    const existing = await this.repo
+      .createQueryBuilder('bm')
+      .where('bm.user_id = :userId', { userId })
+      .andWhere("DATE(bm.recorded_at AT TIME ZONE 'UTC') = :date", { date: dateStr })
+      .getOne();
 
     if (existing) {
       if (dto.weightKg !== undefined) existing.weightKg = dto.weightKg;
@@ -40,7 +46,7 @@ export class BodyMetricsRepository implements IBodyMetricsRepository {
 
     const metric = this.repo.create({
       userId,
-      recordedDate: dto.recordedDate,
+      recordedAt: dto.recordedAt ? new Date(dto.recordedAt) : new Date(),
       weightKg: dto.weightKg,
       bodyFatPct: dto.bodyFatPct,
       waistCm: dto.waistCm,
@@ -59,13 +65,17 @@ export class BodyMetricsRepository implements IBodyMetricsRepository {
     userId: string,
     date: string,
   ): Promise<BodyMetric | null> {
-    return this.repo.findOne({ where: { userId, recordedDate: date } });
+    return this.repo
+      .createQueryBuilder('bm')
+      .where('bm.user_id = :userId', { userId })
+      .andWhere("DATE(bm.recorded_at AT TIME ZONE 'UTC') = :date", { date })
+      .getOne();
   }
 
   async findLatest(userId: string): Promise<BodyMetric | null> {
     return this.repo.findOne({
       where: { userId },
-      order: { recordedDate: 'DESC' },
+      order: { recordedAt: 'DESC' },
     });
   }
 
@@ -75,14 +85,18 @@ export class BodyMetricsRepository implements IBodyMetricsRepository {
   ): Promise<BodyMetric[]> {
     const qb = this.repo
       .createQueryBuilder('bm')
-      .where('bm.userId = :userId', { userId })
-      .orderBy('bm.recordedDate', 'DESC')
+      .where('bm.user_id = :userId', { userId })
+      .orderBy('bm.recorded_at', 'DESC')
       .take(query.limit ?? 30);
 
-    if (query.fromDate)
-      qb.andWhere('bm.recordedDate >= :fromDate', { fromDate: query.fromDate });
-    if (query.toDate)
-      qb.andWhere('bm.recordedDate <= :toDate', { toDate: query.toDate });
+    if (query.date) {
+      qb.andWhere("DATE(bm.recorded_at AT TIME ZONE 'UTC') = :date", { date: query.date });
+    } else {
+      if (query.fromDate)
+        qb.andWhere('bm.recorded_at >= :fromDate', { fromDate: query.fromDate });
+      if (query.toDate)
+        qb.andWhere('bm.recorded_at <= :toDate', { toDate: query.toDate });
+    }
 
     return qb.getMany();
   }
@@ -92,10 +106,13 @@ export class BodyMetricsRepository implements IBodyMetricsRepository {
     fromDate: string,
     toDate: string,
   ): Promise<BodyMetric[]> {
-    return this.repo.find({
-      where: { userId, recordedDate: Between(fromDate, toDate) as any },
-      order: { recordedDate: 'ASC' },
-    });
+    return this.repo
+      .createQueryBuilder('bm')
+      .where('bm.user_id = :userId', { userId })
+      .andWhere('bm.recorded_at >= :fromDate', { fromDate })
+      .andWhere('bm.recorded_at <= :toDate', { toDate })
+      .orderBy('bm.recorded_at', 'ASC')
+      .getMany();
   }
 
   async savePhoto(

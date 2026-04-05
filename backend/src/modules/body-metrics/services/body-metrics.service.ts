@@ -11,7 +11,7 @@ import { BodyMetricQueryDto } from '../dto/body-metric-query.dto';
 import { UsersService } from '../../users/users.service';
 import { BMIUtil } from '../../../common/utils/bmi.util';
 import { TDEEUtil } from '../../../common/utils/tdee.util';
-import { CloudinaryService } from '../../cloudinary/cloudinary.service';
+import { LocalUploadService } from '../../local-upload/local-upload.service';
 
 interface MetricCalculated extends UpsertBodyMetricDto {
   bmi?: number;
@@ -25,10 +25,13 @@ export class BodyMetricsService {
     @Inject(BODY_METRICS_REPOSITORY)
     private readonly repository: IBodyMetricsRepository,
     private readonly usersService: UsersService,
-    private readonly cloudinaryService: CloudinaryService,
+    private readonly localUploadService: LocalUploadService,
   ) {}
 
   async upsert(userId: string, dto: UpsertBodyMetricDto) {
+    if (!dto.recordedAt) {
+      dto.recordedAt = new Date().toISOString().split('T')[0];
+    }
     const metric: MetricCalculated = { ...dto };
 
     if (dto.weightKg) {
@@ -58,6 +61,9 @@ export class BodyMetricsService {
   }
 
   async getHistory(userId: string, query: BodyMetricQueryDto) {
+    if (!query.date && !query.fromDate && !query.toDate) {
+      query.date = new Date().toISOString().split('T')[0];
+    }
     return this.repository.findHistory(userId, query);
   }
 
@@ -84,7 +90,7 @@ export class BodyMetricsService {
 
     const sorted = [...history].sort(
       (a, b) =>
-        new Date(a.recordedDate).getTime() - new Date(b.recordedDate).getTime(),
+        new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime(),
     );
 
     const first = sorted[0];
@@ -96,8 +102,8 @@ export class BodyMetricsService {
       startWeight,
       currentWeight,
       weightChange: Number((currentWeight - startWeight).toFixed(1)),
-      startDate: first.recordedDate,
-      latestDate: latest.recordedDate,
+      startDate: first.recordedAt,
+      latestDate: latest.recordedAt,
       totalRecords: history.length,
     };
   }
@@ -112,8 +118,17 @@ export class BodyMetricsService {
     photoType: string,
     bodyMetricId?: string,
   ) {
-    const { url, publicId } = await this.cloudinaryService.uploadFile(file, 'progress-photos');
-    return this.repository.savePhoto({ userId, photoUrl: url, photoPublicId: publicId, photoType, bodyMetricId });
+    const { url, publicId } = await this.localUploadService.uploadBuffer(
+      file.buffer,
+      'progress-photos',
+    );
+    return this.repository.savePhoto({
+      userId,
+      photoUrl: url,
+      photoPublicId: publicId,
+      photoType,
+      bodyMetricId,
+    });
   }
 
   async deletePhoto(userId: string, photoId: string): Promise<void> {
@@ -125,7 +140,7 @@ export class BodyMetricsService {
       throw new ForbiddenException('You can only delete your own photos');
     }
     if (photo.photoPublicId) {
-      await this.cloudinaryService.deleteFile(photo.photoPublicId).catch(() => undefined);
+      await this.localUploadService.deleteFile(photo.photoPublicId);
     }
     await this.repository.deletePhoto(photoId);
   }

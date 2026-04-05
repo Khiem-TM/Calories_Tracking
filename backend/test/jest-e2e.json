@@ -12,5 +12,9 @@
         "types": ["jest", "node"]
       }
     }
-  }
+  },
+  "reporters": [
+    "default",
+    ["<rootDir>/reporters/markdown-reporter.js", {}]
+  ]
 }

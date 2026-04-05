@@ -5,12 +5,12 @@ import { FoodsService } from './foods.service';
 import { Food } from './entities/food.entity';
 import { FoodBarcode } from './entities/food-barcode.entity';
 import { FoodUserFavorite } from './entities/food-user-favorite.entity';
-import { CloudinaryModule } from '../cloudinary/cloudinary.module';
+import { LocalUploadModule } from '../local-upload/local-upload.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Food, FoodBarcode, FoodUserFavorite]),
-    CloudinaryModule,
+    LocalUploadModule,
   ],
   controllers: [FoodsController],
   providers: [FoodsService],

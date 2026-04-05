@@ -120,7 +120,7 @@ export default function ProfilePage() {
           >
             {user?.avatar_url ? (
               <img
-                src={`${BASE_URL}${user.avatar_url}`}
+                src={user.avatar_url.startsWith("http") ? user.avatar_url : `${BASE_URL}${user.avatar_url}`}
                 alt={user.display_name}
                 className="h-full w-full object-cover"
               />

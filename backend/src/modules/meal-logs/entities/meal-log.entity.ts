@@ -7,14 +7,12 @@ import {
   ManyToOne,
   JoinColumn,
   OneToMany,
-  Unique,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { MealLogItem } from './meal-log-item.entity';
 import { MealType } from '../../../common/enums/meal-type.enum';
 
 @Entity('meal_logs')
-@Unique(['user_id', 'log_date', 'meal_type'])
 export class MealLog {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -26,8 +24,8 @@ export class MealLog {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ type: 'date' })
-  log_date: string;
+  @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
+  log_date: Date;
 
   @Column({ type: 'enum', enum: MealType })
   meal_type: MealType;

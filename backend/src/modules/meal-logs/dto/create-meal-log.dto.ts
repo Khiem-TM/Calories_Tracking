@@ -33,8 +33,9 @@ export class CreateMealLogItemDto {
 import { MealType } from '../../../common/enums/meal-type.enum';
 
 export class CreateMealLogDto {
+  @IsOptional()
   @IsDateString()
-  log_date!: string;
+  log_date?: string;
 
   @IsString()
   @IsEnum(MealType)

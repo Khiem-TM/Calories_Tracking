@@ -17,8 +17,8 @@ export class BodyMetric {
   @Column({ name: 'user_id' })
   userId!: string;
 
-  @Column({ name: 'recorded_date', type: 'date' })
-  recordedDate!: string;
+  @Column({ name: 'recorded_at', type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
+  recordedAt!: Date;
 
   @Column({
     name: 'weight_kg',

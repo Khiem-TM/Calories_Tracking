@@ -51,11 +51,16 @@ function updateStoredAccessToken(accessToken: string) {
   }
 }
 
-// ── Request interceptor — attach Bearer token ─────────────────────────────────
+// ── Request interceptor — attach Bearer token + fix FormData Content-Type ────
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const { accessToken } = getStoredTokens()
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`
+  }
+  // For FormData, remove Content-Type so the browser XHR sets it automatically
+  // with the correct multipart/form-data; boundary=... value
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type']
   }
   return config
 })

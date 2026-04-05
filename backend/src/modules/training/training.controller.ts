@@ -10,14 +10,11 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
-  ParseFilePipe,
-  MaxFileSizeValidator,
-  FileTypeValidator,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
+import { buildMulterOptions } from '../../common/utils/multer.config';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { TrainingService } from './training.service';
 import { JwtAuthGuard } from '../../common/guards/jwt.guard';
@@ -46,7 +43,7 @@ export class TrainingController {
     return this.trainingService.getExercises(query);
   }
 
-  @ApiOperation({ summary: 'Upload an image for an exercise' })
+  @ApiOperation({ summary: 'Upload avatar image for an exercise' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
@@ -55,21 +52,40 @@ export class TrainingController {
       required: ['file'],
     },
   })
-  @Post('exercises/:id/image')
-  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
-  uploadExerciseImage(
+  @Post('exercises/:id/image/avatar')
+  @UseInterceptors(FileInterceptor('file', buildMulterOptions('exercises')))
+  uploadExerciseAvtImage(
     @Param('id') id: string,
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
-          new FileTypeValidator({ fileType: /image\/(jpeg|jpg|png|webp)/ }),
-        ],
-      }),
-    )
-    file: Express.Multer.File,
+    @UploadedFile() file: Express.Multer.File,
   ) {
-    return this.trainingService.uploadExerciseImage(id, file);
+    return this.trainingService.uploadExerciseAvtImage(id, file);
+  }
+
+  @ApiOperation({ summary: 'Add an illustration image to exercise gallery' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+      required: ['file'],
+    },
+  })
+  @Post('exercises/:id/image/gallery')
+  @UseInterceptors(FileInterceptor('file', buildMulterOptions('exercises')))
+  addExerciseGalleryImage(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.trainingService.addExerciseGalleryImage(id, file);
+  }
+
+  @ApiOperation({ summary: 'Remove an illustration image from exercise gallery' })
+  @Delete('exercises/:id/image/gallery/:publicId')
+  removeExerciseGalleryImage(
+    @Param('id') id: string,
+    @Param('publicId') publicId: string,
+  ) {
+    return this.trainingService.removeExerciseGalleryImage(id, publicId);
   }
 
   @ApiOperation({ summary: 'Log a workout session' })

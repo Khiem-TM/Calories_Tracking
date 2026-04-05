@@ -30,8 +30,34 @@ export class ExercisesRepository implements IExercisesRepository {
     return this.repo.findOne({ where: { id } });
   }
 
-  async updateImage(id: string, imageUrl: string | null, imagePublicId: string | null): Promise<Exercise> {
-    await this.repo.update(id, { imageUrl, imagePublicId });
+  async updateAvtImage(id: string, imageAvtUrl: string | null, imageAvtPublicId: string | null): Promise<Exercise> {
+    await this.repo.update(id, { imageAvtUrl, imageAvtPublicId });
+    return this.repo.findOne({ where: { id } }) as Promise<Exercise>;
+  }
+
+  async addImageToGallery(id: string, imageUrl: string, imagePublicId: string): Promise<Exercise> {
+    const exercise = await this.repo.findOne({ where: { id } });
+    if (!exercise) throw new Error('Exercise not found');
+    const urls = exercise.imageUrl ?? [];
+    const publicIds = exercise.imagePublicIds ?? [];
+    await this.repo.update(id, {
+      imageUrl: [...urls, imageUrl],
+      imagePublicIds: [...publicIds, imagePublicId],
+    });
+    return this.repo.findOne({ where: { id } }) as Promise<Exercise>;
+  }
+
+  async removeImageFromGallery(id: string, imagePublicId: string): Promise<Exercise> {
+    const exercise = await this.repo.findOne({ where: { id } });
+    if (!exercise) throw new Error('Exercise not found');
+    const publicIds = exercise.imagePublicIds ?? [];
+    const urls = exercise.imageUrl ?? [];
+    const idx = publicIds.indexOf(imagePublicId);
+    if (idx !== -1) {
+      publicIds.splice(idx, 1);
+      urls.splice(idx, 1);
+    }
+    await this.repo.update(id, { imageUrl: urls, imagePublicIds: publicIds });
     return this.repo.findOne({ where: { id } }) as Promise<Exercise>;
   }
 }

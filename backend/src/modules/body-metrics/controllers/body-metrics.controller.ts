@@ -9,14 +9,11 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
-  ParseFilePipe,
-  MaxFileSizeValidator,
-  FileTypeValidator,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
+import { buildMulterOptions } from '../../../common/utils/multer.config';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -41,7 +38,10 @@ export class BodyMetricsController {
 
   @ApiOperation({ summary: 'Get body metric history' })
   @Get()
-  getHistory(@CurrentUser() user: JwtPayload, @Query() query: BodyMetricQueryDto) {
+  getHistory(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: BodyMetricQueryDto,
+  ) {
     return this.bodyMetricsService.getHistory(user.sub, query);
   }
 
@@ -67,7 +67,10 @@ export class BodyMetricsController {
   @ApiQuery({ name: 'limit', required: false })
   @Get('photos')
   getPhotos(@CurrentUser() user: JwtPayload, @Query('limit') limit?: number) {
-    return this.bodyMetricsService.getPhotosByUser(user.sub, limit ? Number(limit) : 10);
+    return this.bodyMetricsService.getPhotosByUser(
+      user.sub,
+      limit ? Number(limit) : 10,
+    );
   }
 
   @ApiOperation({ summary: 'Upload a progress photo' })
@@ -77,29 +80,32 @@ export class BodyMetricsController {
       type: 'object',
       properties: {
         file: { type: 'string', format: 'binary' },
-        photoType: { type: 'string', enum: ['front', 'back', 'side'], default: 'front' },
+        photoType: {
+          type: 'string',
+          enum: ['front', 'back', 'side'],
+          default: 'front',
+        },
         bodyMetricId: { type: 'string', format: 'uuid' },
       },
       required: ['file'],
     },
   })
   @Post('photos')
-  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  @UseInterceptors(
+    FileInterceptor('file', buildMulterOptions('progress-photos')),
+  )
   uploadPhoto(
     @CurrentUser() user: JwtPayload,
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
-          new FileTypeValidator({ fileType: /image\/(jpeg|jpg|png|webp)/ }),
-        ],
-      }),
-    )
-    file: Express.Multer.File,
+    @UploadedFile() file: Express.Multer.File,
     @Body('photoType') photoType = 'front',
     @Body('bodyMetricId') bodyMetricId?: string,
   ) {
-    return this.bodyMetricsService.uploadPhoto(user.sub, file, photoType, bodyMetricId);
+    return this.bodyMetricsService.uploadPhoto(
+      user.sub,
+      file,
+      photoType,
+      bodyMetricId,
+    );
   }
 
   @ApiOperation({ summary: 'Delete a progress photo' })

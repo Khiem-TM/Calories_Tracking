@@ -4,6 +4,10 @@ import { Type } from 'class-transformer';
 export class BodyMetricQueryDto {
   @IsOptional()
   @IsDateString()
+  date?: string;
+
+  @IsOptional()
+  @IsDateString()
   fromDate?: string;
 
   @IsOptional()

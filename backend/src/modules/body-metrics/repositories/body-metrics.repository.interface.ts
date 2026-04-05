@@ -6,7 +6,7 @@ import { BodyMetricQueryDto } from '../dto/body-metric-query.dto';
 export interface IBodyMetricsRepository {
   upsert(
     userId: string,
-    dto: UpsertBodyMetricDto & { bmi?: number },
+    dto: UpsertBodyMetricDto & { bmi?: number; bmr?: number; tdee?: number },
   ): Promise<BodyMetric>;
   findByUserAndDate(userId: string, date: string): Promise<BodyMetric | null>;
   findLatest(userId: string): Promise<BodyMetric | null>;

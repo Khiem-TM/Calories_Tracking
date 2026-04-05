@@ -16,15 +16,19 @@ export class MealLogsRepository implements IMealLogsRepository {
   ) {}
 
   async findOrCreate(userId: string, date: string, type: MealType): Promise<MealLog> {
-    let log = await this.logRepo.findOne({
-      where: { user_id: userId, log_date: date, meal_type: type },
-      relations: ['items', 'items.food'],
-    });
+    let log = await this.logRepo
+      .createQueryBuilder('ml')
+      .where('ml.user_id = :userId', { userId })
+      .andWhere('ml.meal_type = :type', { type })
+      .andWhere("DATE(ml.log_date AT TIME ZONE 'UTC') = :date", { date })
+      .leftJoinAndSelect('ml.items', 'items')
+      .leftJoinAndSelect('items.food', 'food')
+      .getOne();
 
     if (!log) {
       log = this.logRepo.create({
         user_id: userId,
-        log_date: date,
+        log_date: new Date(date),
         meal_type: type,
       });
       log = await this.logRepo.save(log);
@@ -42,14 +46,18 @@ export class MealLogsRepository implements IMealLogsRepository {
   }
 
   async findByUser(userId: string, date?: string): Promise<MealLog[]> {
-    const where: any = { user_id: userId };
-    if (date) where.log_date = date;
+    const qb = this.logRepo
+      .createQueryBuilder('ml')
+      .where('ml.user_id = :userId', { userId })
+      .leftJoinAndSelect('ml.items', 'items')
+      .leftJoinAndSelect('items.food', 'food')
+      .orderBy('ml.meal_type', 'ASC');
 
-    return this.logRepo.find({
-      where,
-      relations: ['items', 'items.food'],
-      order: { meal_type: 'ASC' }, // Sort by meal sequence if possible
-    });
+    if (date) {
+      qb.andWhere("DATE(ml.log_date AT TIME ZONE 'UTC') = :date", { date });
+    }
+
+    return qb.getMany();
   }
 
   async updateLog(id: string, data: Partial<MealLog>): Promise<MealLog> {
