@@ -4,7 +4,6 @@ import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { UserHealthProfile } from './entities/user-health-profile.entity';
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
-
 @Injectable()
 export class UsersService {
   constructor(
@@ -32,7 +31,8 @@ export class UsersService {
   ): Promise<User> {
     const user = await this.findById(id);
     if (updateData.display_name) user.display_name = updateData.display_name;
-    if (updateData.avatar_url !== undefined) user.avatar_url = updateData.avatar_url;
+    if (updateData.avatar_url !== undefined)
+      user.avatar_url = updateData.avatar_url;
     return this.userRepository.save(user);
   }
 

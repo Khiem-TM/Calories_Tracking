@@ -8,7 +8,10 @@ import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, UserHealthProfile, RefreshToken]), CloudinaryModule],
+  imports: [
+    TypeOrmModule.forFeature([User, UserHealthProfile, RefreshToken]),
+    CloudinaryModule,
+  ],
   controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService],

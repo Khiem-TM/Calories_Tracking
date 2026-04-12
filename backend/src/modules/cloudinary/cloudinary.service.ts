@@ -1,5 +1,13 @@
-import { Injectable, Inject, InternalServerErrorException } from '@nestjs/common';
-import { v2 as cloudinaryV2, UploadApiResponse, UploadApiErrorResponse } from 'cloudinary';
+import {
+  Injectable,
+  Inject,
+  InternalServerErrorException,
+} from '@nestjs/common';
+import {
+  v2 as cloudinaryV2,
+  UploadApiResponse,
+  UploadApiErrorResponse,
+} from 'cloudinary';
 import { Readable } from 'stream';
 import { CLOUDINARY } from './cloudinary.provider';
 

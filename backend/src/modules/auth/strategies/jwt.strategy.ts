@@ -2,9 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
-// cấu trúc payload
 export interface JwtPayload {
-  sub: string; // user id = subject = sub
+  sub: string;
   email: string;
   role: string;
 }
@@ -13,14 +12,15 @@ export interface JwtPayload {
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(), // get token from header
-      ignoreExpiration: false, // không bỏ qua expiration, nếu token hết hạn sẽ trả về 401 --> reject
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ignoreExpiration: false,
       secretOrKey: process.env.JWT_SECRET || 'khiemhehe',
     });
   }
 
-  validate(payload: JwtPayload): JwtPayload {
-    return payload; // payload sẽ được attach vào request.user sau khi token hợp lệ, để controller có thể truy cập thông tin user
+  validate(payload: JwtPayload) {
+    return { sub: payload.sub, email: payload.email, role: payload.role };
   }
 }
-// jwtStrategy --> authenticate user = JWT token
+
+// Lấy token từ request --> Confirm token hợp lệ --> Lấy payload từ token --> Gắn payload vào req.user

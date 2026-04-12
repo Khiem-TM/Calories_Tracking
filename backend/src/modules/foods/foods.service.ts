@@ -5,7 +5,7 @@ import { Food } from './entities/food.entity';
 import { FoodBarcode } from './entities/food-barcode.entity';
 import { FoodUserFavorite } from './entities/food-user-favorite.entity';
 import { CreateFoodDto } from './dto/create-food.dto';
-import { LocalUploadService } from '../local-upload/local-upload.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Injectable()
 export class FoodsService {
@@ -16,7 +16,7 @@ export class FoodsService {
     private readonly barcodeRepository: Repository<FoodBarcode>,
     @InjectRepository(FoodUserFavorite)
     private readonly favoriteRepository: Repository<FoodUserFavorite>,
-    private readonly localUploadService: LocalUploadService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async findAll(query: string = '', page: number = 1, limit: number = 20) {
@@ -82,7 +82,7 @@ export class FoodsService {
 
   async uploadImage(foodId: string, file: Express.Multer.File): Promise<Food> {
     const food = await this.findOne(foodId);
-    const { url, publicId } = await this.localUploadService.uploadBuffer(file.buffer, 'foods');
+    const { url, publicId } = await this.cloudinaryService.uploadFile(file, 'foods');
     food.image_urls = [...(food.image_urls ?? []), url];
     food.image_public_ids = [...(food.image_public_ids ?? []), publicId];
     return this.foodRepository.save(food);
@@ -92,7 +92,7 @@ export class FoodsService {
     const food = await this.findOne(foodId);
     const idx = (food.image_public_ids ?? []).indexOf(publicId);
     if (idx === -1) throw new NotFoundException('Image not found on this food');
-    await this.localUploadService.deleteFile(publicId);
+    await this.cloudinaryService.deleteFile(publicId);
     food.image_public_ids = (food.image_public_ids ?? []).filter((_, i) => i !== idx);
     food.image_urls = (food.image_urls ?? []).filter((_, i) => i !== idx);
     return this.foodRepository.save(food);
@@ -103,9 +103,43 @@ export class FoodsService {
       where: { barcode },
       relations: ['food'],
     });
-    if (!record || !record.food) {
-      throw new NotFoundException(`Food with barcode ${barcode} not found`);
+    if (record?.food) return record.food;
+
+    // Fallback: Open Food Facts API
+    try {
+      const res = await fetch(
+        `https://world.openfoodfacts.org/api/v3/product/${barcode}.json`,
+      );
+      const data = await res.json() as any;
+      if (data.status === 'success' && data.product) {
+        const p = data.product;
+        const n = p.nutriments ?? {};
+        const food = this.foodRepository.create({
+          name: p.product_name || p.abbreviated_product_name || barcode,
+          name_en: p.product_name_en || null,
+          brand: p.brands || null,
+          category: p.categories_tags?.[0]?.replace('en:', '') || null,
+          food_type: 'product',
+          serving_size_g: parseFloat(p.serving_quantity) || 100,
+          calories_per_100g: n['energy-kcal_100g'] ?? 0,
+          protein_per_100g: n['proteins_100g'] ?? 0,
+          fat_per_100g: n['fat_100g'] ?? 0,
+          carbs_per_100g: n['carbohydrates_100g'] ?? 0,
+          fiber_per_100g: n['fiber_100g'] ?? 0,
+          sugar_per_100g: n['sugars_100g'] ?? 0,
+          sodium_per_100g: n['sodium_100g'] ? n['sodium_100g'] * 1000 : 0,
+          is_verified: false,
+          is_active: true,
+          is_custom: false,
+        });
+        const saved = await this.foodRepository.save(food);
+        await this.barcodeRepository.save({ food_id: saved.id, barcode });
+        return saved;
+      }
+    } catch {
+      // ignore external API errors
     }
-    return record.food;
+
+    throw new NotFoundException(`Food with barcode ${barcode} not found`);
   }
 }

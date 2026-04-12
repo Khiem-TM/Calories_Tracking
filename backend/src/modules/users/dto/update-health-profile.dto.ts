@@ -40,7 +40,13 @@ export class UpdateHealthProfileDto {
 
   @ApiPropertyOptional({
     example: 'moderately_active',
-    enum: ['sedentary', 'lightly_active', 'moderately_active', 'very_active', 'extra_active'],
+    enum: [
+      'sedentary',
+      'lightly_active',
+      'moderately_active',
+      'very_active',
+      'extra_active',
+    ],
   })
   @IsOptional()
   @IsString()

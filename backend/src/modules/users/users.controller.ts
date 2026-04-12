@@ -97,10 +97,14 @@ export class UsersController {
 
   @ApiOperation({ summary: 'Get health profile of current user' })
   @Get('me/health-profile')
-  async getHealthProfile(@CurrentUser() user: JwtPayload): Promise<UserHealthProfile> {
+  async getHealthProfile(
+    @CurrentUser() user: JwtPayload,
+  ): Promise<UserHealthProfile> {
     const profile = await this.usersService.getHealthProfile(user.sub);
     if (!profile) {
-      throw new NotFoundException('Health profile not found. Please create one first.');
+      throw new NotFoundException(
+        'Health profile not found. Please create one first.',
+      );
     }
     return profile;
   }

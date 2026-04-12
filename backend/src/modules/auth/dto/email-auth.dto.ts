@@ -2,7 +2,7 @@ import { IsEmail, IsString, MinLength, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ForgotPasswordDto {
-  @ApiProperty({ example: 'user@example.com' })
+  @ApiProperty({ example: 'example@gmail.com' })
   @IsEmail()
   email!: string;
 }
@@ -12,9 +12,9 @@ export class ResetPasswordDto {
   @IsString()
   token!: string;
 
-  @ApiProperty({ minLength: 6 })
+  @ApiProperty({ minLength: 8, maxLength: 100 })
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
   @MaxLength(100)
   newPassword!: string;
 }

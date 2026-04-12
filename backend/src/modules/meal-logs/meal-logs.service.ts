@@ -12,7 +12,9 @@ import { UploadImageDto } from './dto/upload-image.dto';
 import { Food } from '../foods/entities/food.entity';
 import { MEAL_LOGS_REPOSITORY } from './meal-logs.constants';
 import type { IMealLogsRepository } from './repositories/meal-logs.repository.interface';
-import { LocalUploadService } from '../local-upload/local-upload.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { StreaksService } from '../streaks/streaks.service';
+import { StreakType } from '../../common/enums/streak-type.enum';
 
 @Injectable()
 export class MealLogsService {
@@ -21,7 +23,8 @@ export class MealLogsService {
     private readonly repository: IMealLogsRepository,
     @InjectRepository(Food)
     private readonly foodRepository: Repository<Food>,
-    private readonly localUploadService: LocalUploadService,
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly streaksService: StreaksService,
   ) {}
 
   async create(userId: string, dto: CreateMealLogDto): Promise<MealLog> {
@@ -37,6 +40,8 @@ export class MealLogsService {
         await this.addItemToLog(userId, log.id, itemDto);
       }
     }
+
+    await this.streaksService.updateActivity(userId, StreakType.CALORIE_GOAL, logDate);
 
     return this.repository.findById(log.id) as Promise<MealLog>;
   }
@@ -62,7 +67,7 @@ export class MealLogsService {
   async deleteLog(userId: string, id: string): Promise<void> {
     const log = await this.findOne(userId, id);
     if (log.image_public_id) {
-      await this.localUploadService.deleteFile(log.image_public_id);
+      await this.cloudinaryService.deleteFile(log.image_public_id);
     }
     return this.repository.deleteLog(id);
   }
@@ -74,9 +79,9 @@ export class MealLogsService {
   ): Promise<MealLog> {
     const log = await this.findOne(userId, id);
     if (log.image_public_id) {
-      await this.localUploadService.deleteFile(log.image_public_id);
+      await this.cloudinaryService.deleteFile(log.image_public_id);
     }
-    const { url, publicId } = await this.localUploadService.uploadBuffer(file.buffer, 'meal-logs');
+    const { url, publicId } = await this.cloudinaryService.uploadFile(file, 'meal-logs');
     return this.repository.updateImage(id, url, publicId);
   }
 
@@ -87,9 +92,9 @@ export class MealLogsService {
   ): Promise<MealLog> {
     const log = await this.findOne(userId, id);
     if (log.image_public_id) {
-      await this.localUploadService.deleteFile(log.image_public_id);
+      await this.cloudinaryService.deleteFile(log.image_public_id);
     }
-    const { url, publicId } = await this.localUploadService.uploadBase64(dto.imageData, 'meal-logs');
+    const { url, publicId } = await this.cloudinaryService.uploadBase64(dto.imageData, 'meal-logs');
     return this.repository.updateImage(id, url, publicId);
   }
 
@@ -187,16 +192,38 @@ export class MealLogsService {
     await this.repository.removeItem(itemId);
   }
 
-  async getDailySummary(userId: string, date?: string) {
-    const effectiveDate = date || new Date().toISOString().split('T')[0];
-    const logs = await this.findAllByUser(userId, effectiveDate);
+  async getDailySummaryRange(
+    userId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<Record<string, ReturnType<typeof this._summarizeLogs>>> {
+    const allLogs = await this.repository.findByRange(userId, fromDate, toDate);
 
+    const byDate: Record<string, typeof allLogs> = {};
+    for (const log of allLogs) {
+      const dateStr = new Date(log.log_date).toISOString().split('T')[0];
+      if (!byDate[dateStr]) byDate[dateStr] = [];
+      byDate[dateStr].push(log);
+    }
+
+    // Build a zero-entry for every date in range
+    const result: Record<string, ReturnType<typeof this._summarizeLogs>> = {};
+    const current = new Date(fromDate);
+    const end = new Date(toDate);
+    while (current <= end) {
+      const dateStr = current.toISOString().split('T')[0];
+      result[dateStr] = this._summarizeLogs(dateStr, byDate[dateStr] || []);
+      current.setDate(current.getDate() + 1);
+    }
+    return result;
+  }
+
+  private _summarizeLogs(date: string, logs: import('./entities/meal-log.entity').MealLog[]) {
     let totalCalories = 0;
     let totalProtein = 0;
     let totalFat = 0;
     let totalCarbs = 0;
     let totalFiber = 0;
-
     for (const log of logs) {
       for (const item of log.items || []) {
         totalCalories += Number(item.calories_snapshot || 0);
@@ -206,9 +233,8 @@ export class MealLogsService {
         totalFiber += Number(item.fiber_snapshot || 0);
       }
     }
-
     return {
-      date: effectiveDate,
+      date,
       total_calories: Math.round(totalCalories * 100) / 100,
       total_protein: Math.round(totalProtein * 100) / 100,
       total_fat: Math.round(totalFat * 100) / 100,
@@ -216,5 +242,11 @@ export class MealLogsService {
       total_fiber: Math.round(totalFiber * 100) / 100,
       logs,
     };
+  }
+
+  async getDailySummary(userId: string, date?: string) {
+    const effectiveDate = date || new Date().toISOString().split('T')[0];
+    const logs = await this.findAllByUser(userId, effectiveDate);
+    return this._summarizeLogs(effectiveDate, logs);
   }
 }
