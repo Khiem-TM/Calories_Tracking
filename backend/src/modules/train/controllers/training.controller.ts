@@ -15,7 +15,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { buildMulterOptions } from '../../../common/utils/multer.config';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { TrainingService } from '../services/training.service';
 import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
@@ -97,10 +97,27 @@ export class TrainingController {
     return this.trainingService.logWorkout(user.sub, dto);
   }
 
-  @ApiOperation({ summary: 'Get workout history' })
+  @ApiOperation({ summary: 'Get workout history (most recent, supports limit)' })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'fromDate', required: false, example: '2024-01-01' })
+  @ApiQuery({ name: 'toDate', required: false, example: '2024-01-31' })
   @Get('history')
-  getHistory(@CurrentUser() user: JwtPayload, @Query('limit') limit?: number) {
+  getHistory(
+    @CurrentUser() user: JwtPayload,
+    @Query('limit') limit?: number,
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
+  ) {
+    if (fromDate || toDate) {
+      return this.trainingService.getWorkoutHistoryRange(user.sub, fromDate, toDate);
+    }
     return this.trainingService.getWorkoutHistory(user.sub, limit ? Number(limit) : 20);
+  }
+
+  @ApiOperation({ summary: 'Get workout sessions for a specific date' })
+  @Get('history/:date')
+  getHistoryByDate(@CurrentUser() user: JwtPayload, @Param('date') date: string) {
+    return this.trainingService.getWorkoutHistoryByDate(user.sub, date);
   }
 
   @ApiOperation({ summary: 'Update a workout session' })

@@ -116,6 +116,17 @@ export class TrainingService {
     return this.sessionRepo.findByUser(userId, limit);
   }
 
+  async getWorkoutHistoryRange(userId: string, fromDate?: string, toDate?: string) {
+    const today = new Date().toISOString().split('T')[0];
+    const from = fromDate || today;
+    const to = toDate || today;
+    return this.sessionRepo.findByDateRange(userId, from, to);
+  }
+
+  async getWorkoutHistoryByDate(userId: string, date: string) {
+    return this.sessionRepo.findByDateRange(userId, date, date);
+  }
+
   async createGoal(userId: string, dto: CreateTrainingGoalDto) {
     // 1. Calculate macros from TDEE if possible
     const latestMetric = await this.bodyMetricsService.getLatest(userId);

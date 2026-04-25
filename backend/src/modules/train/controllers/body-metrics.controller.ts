@@ -36,7 +36,10 @@ import { BodyMetricQueryDto } from '../dto/body-metric-query.dto';
 export class BodyMetricsController {
   constructor(private readonly bodyMetricsService: BodyMetricsService) {}
 
-  @ApiOperation({ summary: 'Get body metric history' })
+  @ApiOperation({ summary: 'Get body metric history (date / fromDate-toDate)' })
+  @ApiQuery({ name: 'date', required: false, example: '2024-01-15' })
+  @ApiQuery({ name: 'fromDate', required: false, example: '2024-01-01' })
+  @ApiQuery({ name: 'toDate', required: false, example: '2024-01-31' })
   @Get()
   getHistory(@CurrentUser() user: JwtPayload, @Query() query: BodyMetricQueryDto) {
     return this.bodyMetricsService.getHistory(user.sub, query);
@@ -58,6 +61,31 @@ export class BodyMetricsController {
   @Get('summary')
   getSummary(@CurrentUser() user: JwtPayload) {
     return this.bodyMetricsService.getProgressSummary(user.sub);
+  }
+
+  @ApiOperation({ summary: 'Get body metric history for a date range' })
+  @ApiQuery({ name: 'fromDate', required: false, example: '2024-01-01' })
+  @ApiQuery({ name: 'toDate', required: false, example: '2024-01-31' })
+  @Get('history')
+  getHistoryRange(
+    @CurrentUser() user: JwtPayload,
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
+  ) {
+    const today = new Date().toISOString().split('T')[0];
+    return this.bodyMetricsService.getHistory(user.sub, {
+      fromDate: fromDate || today,
+      toDate: toDate || today,
+    });
+  }
+
+  @ApiOperation({ summary: 'Get body metrics for a specific date' })
+  @Get('history/:date')
+  getHistoryByDate(
+    @CurrentUser() user: JwtPayload,
+    @Param('date') date: string,
+  ) {
+    return this.bodyMetricsService.getHistory(user.sub, { date });
   }
 
   @ApiOperation({ summary: 'Get progress photos' })

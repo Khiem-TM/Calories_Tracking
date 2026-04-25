@@ -52,6 +52,13 @@ export class MealLogsService {
     return this.repository.findByUser(userId, effectiveDate);
   }
 
+  async findHistory(userId: string, fromDate?: string, toDate?: string): Promise<MealLog[]> {
+    const today = new Date().toISOString().split('T')[0];
+    const from = fromDate || today;
+    const to = toDate || today;
+    return this.repository.findByRange(userId, from, to);
+  }
+
   async findOne(userId: string, id: string): Promise<MealLog> {
     const log = await this.repository.findById(id);
     if (!log || log.user_id !== userId) {

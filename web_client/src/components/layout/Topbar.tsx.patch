@@ -1,2 +1,0 @@
-cat /Users/UET/DACN/Project/web_client/src/components/layout/Topbar.tsx | sed 's/src={user.avatar_url.startsWith("http") ? user.avatar_url : \`\${BASE_URL}${user.avatar_url}\`}/src={user.avatar_url.startsWith("http") ? user.avatar_url : \`\${BASE_URL}${user.avatar_url}\`}/g' > /tmp/Topbar.tsx
-mv /tmp/Topbar.tsx /Users/UET/DACN/Project/web_client/src/components/layout/Topbar.tsx

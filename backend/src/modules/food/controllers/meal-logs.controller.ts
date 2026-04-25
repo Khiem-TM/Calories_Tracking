@@ -50,6 +50,27 @@ export class MealLogsController {
     return this.mealLogsService.findAllByUser(user.sub, date);
   }
 
+  @ApiOperation({ summary: 'Get meal log history for a date range' })
+  @ApiQuery({ name: 'fromDate', required: false, example: '2024-01-01' })
+  @ApiQuery({ name: 'toDate', required: false, example: '2024-01-31' })
+  @Get('history')
+  getHistory(
+    @CurrentUser() user: JwtPayload,
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
+  ) {
+    return this.mealLogsService.findHistory(user.sub, fromDate, toDate);
+  }
+
+  @ApiOperation({ summary: 'Get meal logs for a specific date' })
+  @Get('history/:date')
+  getHistoryByDate(
+    @CurrentUser() user: JwtPayload,
+    @Param('date') date: string,
+  ) {
+    return this.mealLogsService.findAllByUser(user.sub, date);
+  }
+
   @ApiOperation({ summary: 'Get daily nutrition summary (defaults to today)' })
   @ApiQuery({ name: 'date', required: false, example: '2024-01-15' })
   @Get('summary')
