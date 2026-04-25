@@ -5,10 +5,10 @@ import ModelClient, { isUnexpected } from '@azure-rest/ai-inference';
 import { AzureKeyCredential } from '@azure/core-auth';
 import { ChatSession } from './entities/chat-session.entity';
 import { ChatMessage } from './entities/chat-message.entity';
-import { MealLogsService } from '../meal-logs/meal-logs.service';
-import { BodyMetricsService } from '../body-metrics/services/body-metrics.service';
-import { TrainingService } from '../training/training.service';
-import { UsersService } from '../users/users.service';
+import { MealLogsService } from '../food/services/meal-logs.service';
+import { BodyMetricsService } from '../train/services/body-metrics.service';
+import { TrainingService } from '../train/services/training.service';
+import { UsersService } from '../user/services/users.service';
 
 @Injectable()
 export class ChatbotService {

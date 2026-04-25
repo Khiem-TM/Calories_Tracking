@@ -7,24 +7,22 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { User } from '../users/entities/user.entity';
-import { Food } from '../foods/entities/food.entity';
-import { Exercise } from '../training/entities/exercise.entity';
-import { WorkoutSession } from '../training/entities/workout-session.entity';
-import { Blog } from './entities/blog.entity';
-import { SportTip } from '../training/entities/sport-tip.entity';
-import { FoodRecipe } from '../foods/entities/food-recipe.entity';
-import { FoodRecipeStep } from '../foods/entities/food-recipe-step.entity';
+import { User } from '../user/entities/user.entity';
+import { Food } from '../food/entities/food.entity';
+import { Exercise } from '../train/entities/exercise.entity';
+import { WorkoutSession } from '../train/entities/workout-session.entity';
+import { Blog } from '../blog/entities/blog.entity';
+import { SportTip } from '../train/entities/sport-tip.entity';
+import { FoodRecipe } from '../food/entities/food-recipe.entity';
+import { FoodRecipeStep } from '../food/entities/food-recipe-step.entity';
 import { CreateFoodAdminDto } from './dto/create-food-admin.dto';
 import { UpdateFoodAdminDto } from './dto/update-food-admin.dto';
 import { CreateExerciseAdminDto } from './dto/create-exercise-admin.dto';
 import { UpdateExerciseAdminDto } from './dto/update-exercise-admin.dto';
-import { CreateBlogDto } from './dto/create-blog.dto';
-import { UpdateBlogDto } from './dto/update-blog.dto';
 import {
   CreateRecipeDto,
   AddRecipeStepDto,
-} from '../foods/dto/create-recipe.dto';
+} from '../food/dto/create-recipe.dto';
 
 @Injectable()
 export class AdminService {
@@ -279,51 +277,6 @@ export class AdminService {
     const exercise = await this.exerciseRepo.findOne({ where: { id } });
     if (!exercise) throw new NotFoundException('Exercise not found');
     await this.exerciseRepo.delete(id);
-  }
-
-  // ─── Blogs ────────────────────────────────────────────────────────────────
-
-  async getBlogs(page = 1, limit = 20) {
-    const [blogs, total] = await this.blogRepo.findAndCount({
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-    return { blogs, total, page, limit };
-  }
-
-  async getOneBlog(id: string): Promise<Blog> {
-    const blog = await this.blogRepo.findOne({ where: { id } });
-    if (!blog) throw new NotFoundException('Blog not found');
-    return blog;
-  }
-
-  async createBlog(dto: CreateBlogDto): Promise<Blog> {
-    const blog = this.blogRepo.create({
-      title: dto.title,
-      content: dto.content,
-      author: dto.author ?? 'Admin',
-      thumbnailUrl: dto.thumbnailUrl ?? null,
-    });
-    return this.blogRepo.save(blog);
-  }
-
-  async updateBlog(id: string, dto: UpdateBlogDto): Promise<Blog> {
-    const blog = await this.blogRepo.findOne({ where: { id } });
-    if (!blog) throw new NotFoundException('Blog not found');
-    Object.assign(blog, {
-      ...(dto.title !== undefined && { title: dto.title }),
-      ...(dto.content !== undefined && { content: dto.content }),
-      ...(dto.author !== undefined && { author: dto.author }),
-      ...(dto.thumbnailUrl !== undefined && { thumbnailUrl: dto.thumbnailUrl }),
-    });
-    return this.blogRepo.save(blog);
-  }
-
-  async deleteBlog(id: string): Promise<void> {
-    const blog = await this.blogRepo.findOne({ where: { id } });
-    if (!blog) throw new NotFoundException('Blog not found');
-    await this.blogRepo.delete(id);
   }
 
   // ─── Sport Tips ───────────────────────────────────────────────────────────
