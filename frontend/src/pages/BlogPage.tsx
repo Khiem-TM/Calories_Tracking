@@ -23,10 +23,15 @@ export default function BlogPage() {
   const [search, setSearch] = useState('')
   const [commentInput, setCommentInput] = useState('')
 
-  /* const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['blogs', search],
     queryFn: () => blogService.list({ page: 1, limit: 20, search: search || undefined }).then(r => r.data?.data ?? r.data),
-  }) */
+  })
+
+  const { data: rawMyBlogs, isLoading: loadingMyBlogs } = useQuery({
+    queryKey: ['my-blogs'],
+    queryFn: () => blogService.getMyBlogs().then(r => r.data?.data ?? r.data),
+  })
 
   useQuery({
     queryKey: ['blog-comments', selectedBlog?.id],
@@ -69,24 +74,14 @@ export default function BlogPage() {
     resolver: zodResolver(createSchema),
   })
 
-  // const blogs: Blog[] = Array.isArray(data) ? data : (data?.items ?? [])
+  const blogs: Blog[] = Array.isArray(data) ? data : (data?.items ?? [])
+  const myBlogs: Blog[] = Array.isArray(rawMyBlogs) ? rawMyBlogs : (rawMyBlogs?.items ?? [])
 
   const handlePostComment = () => {
     if (!commentInput.trim()) return
-    // DEMO behavior: append instantly to UI (would normally call mutation)
     toast.success('Bình luận đã được gửi')
     setCommentInput('')
   }
-
-  // Fallback demo data
-  const demoBlogs = [
-    { id: '1', title: '10 thực phẩm giàu protein tốt nhất cho người tập gym tại Việt Nam', excerpt: 'Từ ức gà, trứng đến đậu hũ và cá hồi — danh sách đầy đủ với hàm lượng cụ thể.', cat: 'Dinh dưỡng', color: 'var(--green-accent)', img: '🥗', bg: 'var(--green-light)', author: 'Nguyễn Linh', likes: 238, comments: 42 },
-    { id: '2', title: 'Cardio hay Strength Training? Bài tập nào đốt mỡ hiệu quả hơn?', excerpt: 'Nghiên cứu mới nhất tiết lộ sự thật bất ngờ về hai phương pháp.', cat: 'Tập luyện', color: '#c47a00', img: '🏃', bg: '#fef3e2', author: 'Trần Hùng', likes: 194, comments: 28 },
-    { id: '3', title: 'Ngủ đủ giấc ảnh hưởng thế nào đến việc giảm cân và tăng cơ?', excerpt: 'Thiếu ngủ làm tăng cortisol, khiến bạn thèm ăn nhiều hơn 45%.', cat: 'Giấc ngủ', color: '#c04a4a', img: '😴', bg: '#fdf0f0', author: 'Minh Anh', likes: 157, comments: 19 },
-    { id: '4', title: '5 công thức meal prep nhanh cho cả tuần — chỉ 2 tiếng cuối tuần', excerpt: 'Chuẩn bị bữa ăn lành mạnh cho cả tuần với chi phí dưới 500k.', cat: 'Công thức ăn', color: '#2563eb', img: '🍱', bg: '#eff5ff', author: 'Kim Hoà', likes: 312, comments: 54 },
-    { id: '5', title: 'Tại sao bạn ăn ít mà vẫn không giảm được cân? 7 nguyên nhân', excerpt: 'Plateau, adaptive thermogenesis và các yếu tố ẩn cản trở tiến trình.', cat: 'Giảm cân', color: 'var(--green-accent)', img: '⚖️', bg: 'var(--green-light)', author: 'BS. Phạm Lan', likes: 89, comments: 31 },
-    { id: '6', title: 'Mindful eating — Ăn uống có chủ đích giúp bạn no lâu hơn', excerpt: 'Thực hành ăn uống chánh niệm giúp giảm ăn vặt vô thức.', cat: 'Tâm lý', color: '#7c3aed', img: '🧠', bg: '#f3e8ff', author: 'Lê Vân', likes: 203, comments: 37 },
-  ]
 
   return (
     <>
@@ -153,25 +148,42 @@ export default function BlogPage() {
 
                 {/* Blog grid */}
                 <div className="blog-grid2">
-                  {demoBlogs.map((b, i) => {
+                  {blogs.length === 0 && !isLoading && (
+                    <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>Chưa có bài viết nào.</div>
+                  )}
+                  {isLoading && <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>Đang tải...</div>}
+                  {blogs.map((b, i) => {
                     const isLiked = likedPosts.has(b.id)
+                    const bgColors = ['var(--green-light)', '#fef3e2', '#fdf0f0', '#eff5ff', '#f3e8ff']
+                    const textColors = ['var(--green-accent)', '#c47a00', '#c04a4a', '#2563eb', '#7c3aed']
+                    const emojis = ['🥗', '🏃', '😴', '🍱', '⚖️', '🧠']
+                    
+                    const bg = bgColors[i % bgColors.length]
+                    const color = textColors[i % textColors.length]
+                    const img = emojis[i % emojis.length]
+                    const authorName = typeof b.author === 'string' ? b.author : (b.author as any)?.full_name ?? 'Ẩn danh'
+                    const authorInitial = authorName.substring(0, 2).toUpperCase()
+
                     return (
-                      <div key={b.id} className="blog-card2 fade-up" style={{ animationDelay: `${0.08 + i * 0.03}s` }} onClick={() => setSelectedBlog({ id: b.id, title: b.title, content: 'Nội dung demo bài viết ' + b.title } as Blog)}>
-                        <div className="blog-card2-img" style={{ background: b.bg }}>{b.img}
+                      <div key={b.id} className="blog-card2 fade-up" style={{ animationDelay: `${0.08 + i * 0.03}s` }} onClick={() => setSelectedBlog(b)}>
+                        <div className="blog-card2-img" style={{ background: bg, overflow: 'hidden' }}>
+                          {b.thumbnailUrl ? (
+                            <img src={b.thumbnailUrl} alt={b.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : img}
                           <button className={`like-btn ${isLiked ? 'liked' : ''}`} onClick={(e) => { e.stopPropagation(); likeBlog(b.id) }}>{isLiked ? '❤️' : '🤍'}</button>
                         </div>
                         <div className="blog-card2-body">
-                          <div className="blog-cat2" style={{ color: b.color }}>{b.cat}</div>
+                          <div className="blog-cat2" style={{ color: color }}>{(b.tags && b.tags[0]) || 'Sức khỏe'}</div>
                           <div className="blog-title2">{b.title}</div>
-                          <div className="blog-excerpt2">{b.excerpt}</div>
+                          <div className="blog-excerpt2">{b.content?.substring(0, 100) || ''}...</div>
                           <div className="blog-footer">
-                            <div className="blog-author-dot2" style={{ background: b.bg, color: b.color }}>{b.author.substring(0, 2).toUpperCase()}</div>
-                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{b.author}</span>
+                            <div className="blog-author-dot2" style={{ background: bg, color: color }}>{authorInitial}</div>
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{authorName}</span>
                             <div className="blog-stats">
                               <div className="blog-stat" onClick={(e) => { e.stopPropagation(); likeBlog(b.id) }}>
-                                <span>{isLiked ? '❤️' : '🤍'}</span><span>{b.likes + (isLiked ? 1 : 0)}</span>
+                                <span>{isLiked ? '❤️' : '🤍'}</span><span>{b.likesCount ?? 0}</span>
                               </div>
-                              <div className="blog-stat">💬 <span>{b.comments}</span></div>
+                              <div className="blog-stat">💬 <span>{b.viewCount ?? 0}</span></div>
                             </div>
                           </div>
                         </div>
@@ -224,53 +236,32 @@ export default function BlogPage() {
               <button className="btn btn-primary btn-sm" onClick={() => setCreateOpen(true)}>✏️ Viết bài mới</button>
             </div>
             
-            <div className="personal-post fade-up" onClick={() => setSelectedBlog({ id: 'p1', title: 'Hành trình 30 ngày...', content: '...' } as Blog)}>
-              <div className="personal-thumb">🥣</div>
-              <div className="personal-info">
-                <div className="personal-title">Hành trình 30 ngày giảm 2kg của tôi — Không nhịn ăn, chỉ ăn đúng cách</div>
-                <div className="personal-meta">
-                  <span>22/04/2026</span>
-                  <span>❤️ 47 thích</span>
-                  <span>💬 12 bình luận</span>
-                  <span style={{ color: 'var(--green-accent)' }}>👁 1,234 lượt xem</span>
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
-                <div className="badge badge-green">Đã đăng</div>
-                <button className="btn btn-ghost2 btn-sm" onClick={(e) => e.stopPropagation()}>Chỉnh sửa</button>
-              </div>
-            </div>
+            {myBlogs.length === 0 && !loadingMyBlogs && (
+               <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>Bạn chưa có bài viết nào.</div>
+            )}
+            {loadingMyBlogs && <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>Đang tải...</div>}
 
-            <div className="personal-post fade-up" style={{ animationDelay: '.05s' }} onClick={() => setSelectedBlog({ id: 'p2', title: 'Review lịch tập...', content: '...' } as Blog)}>
-              <div className="personal-thumb">🏋️</div>
-              <div className="personal-info">
-                <div className="personal-title">Review lịch tập PPL sau 8 tuần — Kết quả thực tế từ người mới</div>
-                <div className="personal-meta">
-                  <span>15/04/2026</span>
-                  <span>❤️ 83 thích</span>
-                  <span>💬 24 bình luận</span>
-                  <span style={{ color: 'var(--green-accent)' }}>👁 2,891 lượt xem</span>
+            {myBlogs.map((b, i) => (
+              <div key={b.id} className="personal-post fade-up" style={{ animationDelay: `${i * 0.05}s` }} onClick={() => setSelectedBlog(b)}>
+                <div className="personal-thumb" style={{ overflow: 'hidden' }}>
+                    {b.thumbnailUrl ? (
+                        <img src={b.thumbnailUrl} alt={b.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : '📝'}
+                </div>
+                <div className="personal-info">
+                  <div className="personal-title">{b.title}</div>
+                  <div className="personal-meta">
+                    <span>{new Date(b.createdAt ?? new Date()).toLocaleDateString('vi-VN')}</span>
+                    <span>❤️ {b.likesCount ?? 0} thích</span>
+                    <span style={{ color: 'var(--green-accent)' }}>👁 {b.viewCount ?? 0} lượt xem</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+                  <div className="badge badge-green">Đã đăng</div>
+                  <button className="btn btn-ghost2 btn-sm" onClick={(e) => e.stopPropagation()}>Chỉnh sửa</button>
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
-                <div className="badge badge-green">Đã đăng</div>
-                <button className="btn btn-ghost2 btn-sm" onClick={(e) => e.stopPropagation()}>Chỉnh sửa</button>
-              </div>
-            </div>
-
-            <div className="personal-post fade-up" style={{ animationDelay: '.1s' }}>
-              <div className="personal-thumb" style={{ background: '#fef3e2' }}>📝</div>
-              <div className="personal-info">
-                <div className="personal-title">Kinh nghiệm dùng Tracker để track calories — Tips cho người mới</div>
-                <div className="personal-meta">
-                  <span>Nháp — 10/04/2026</span>
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
-                <div className="badge badge-orange">Nháp</div>
-                <button className="btn btn-primary btn-sm" onClick={() => setCreateOpen(true)}>Tiếp tục viết</button>
-              </div>
-            </div>
+            ))}
           </div>
         )}
 

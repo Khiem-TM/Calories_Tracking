@@ -1,10 +1,14 @@
 import { useRef, useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+import { mealLogService } from '@/features/meal-logs/services/mealLogService'
+import { foodService } from '@/features/food/services/foodService'
 import '@/assets/aiscan.css'
 
 interface ScanResult {
+  id?: string
   name: string
   calories: number
   protein: number
@@ -13,17 +17,33 @@ interface ScanResult {
   confidence?: number
 }
 
+function formatDate(d: Date) { return d.toISOString().split('T')[0] }
+
+const MEAL_TYPE_OPTIONS = [
+  { value: 'breakfast', label: '🌅 Bữa sáng' },
+  { value: 'lunch', label: '☀️ Bữa trưa' },
+  { value: 'snack', label: '🍊 Bữa phụ' },
+  { value: 'dinner', label: '🌙 Bữa tối' },
+]
+
+const FOOD_ICONS = ['🍚', '🍗', '🥦', '🥚', '🍜', '🥗', '🍱', '🥩']
+
 export default function AiScanPage() {
   const fileRef = useRef<HTMLInputElement>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
-  
+  const qc = useQueryClient()
+
   const [step, setStep] = useState<'upload' | 'loading' | 'result'>('upload')
   const [results, setResults] = useState<ScanResult[]>([])
   const [selectedItems, setSelectedItems] = useState<boolean[]>([])
+  const [mealType, setMealType] = useState('lunch')
+  const [addingToLog, setAddingToLog] = useState(false)
 
   const { mutate: analyze } = useMutation({
     mutationFn: (file: File) => {
-      const fd = new FormData(); fd.append('image', file)
+      const fd = new FormData()
+      fd.append('image', file)
       return api.post('/ai-scan/analyze', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
     },
     onSuccess: (res) => {
@@ -31,11 +51,11 @@ export default function AiScanPage() {
       const arr = Array.isArray(data) ? data : [data]
       setResults(arr)
       setSelectedItems(arr.map(() => true))
-      
-      // Simulate loading animation
-      setTimeout(() => {
-        setStep('result')
-      }, 2600)
+      setTimeout(() => setStep('result'), 2600)
+    },
+    onError: () => {
+      toast.error('Không thể phân tích ảnh. Vui lòng thử lại.')
+      setStep('upload')
     },
   })
 
@@ -45,23 +65,66 @@ export default function AiScanPage() {
     analyze(file)
   }
 
-  // Demo behavior:
-  const handleDemoScan = () => {
-    setStep('loading')
-    setTimeout(() => {
-      setResults([
-        { name: 'Cơm gạo trắng', calories: 260, carbs: 56, protein: 5, fat: 0, confidence: 0.96 },
-        { name: 'Thịt gà kho gừng', calories: 218, carbs: 12, protein: 28, fat: 8, confidence: 0.91 },
-        { name: 'Rau cải xào tỏi', calories: 72, carbs: 5, protein: 2, fat: 5, confidence: 0.88 },
-        { name: 'Trứng chiên', calories: 98, carbs: 1, protein: 7, fat: 7, confidence: 0.74 }
-      ])
-      setSelectedItems([true, true, true, false])
-      setStep('result')
-    }, 2600)
-  }
-
   const selectedCals = results.reduce((acc, curr, i) => acc + (selectedItems[i] ? curr.calories : 0), 0)
   const selectedCount = selectedItems.filter(Boolean).length
+
+  const handleAddToLog = async () => {
+    const selected = results.filter((_, i) => selectedItems[i])
+    if (selected.length === 0) {
+      toast.error('Chọn ít nhất một món để thêm')
+      return
+    }
+
+    setAddingToLog(true)
+    try {
+      // 1. Tạo meal log
+      const logRes = await mealLogService.create({
+        mealType,
+        date: formatDate(new Date()),
+        notes: 'Thêm từ AI Scan',
+      })
+      const mealLog = logRes.data?.data ?? logRes.data
+      const mealLogId = mealLog?.id
+
+      if (!mealLogId) throw new Error('Không tạo được nhật ký bữa ăn')
+
+      // 2. Với mỗi món được chọn: tìm food có sẵn hoặc tạo custom food, rồi add item
+      for (const item of selected) {
+        try {
+          let foodId = item.id
+
+          if (!foodId) {
+            // Tạo custom food từ dữ liệu AI scan
+            const createRes = await foodService.create({
+              name: item.name,
+              calories: item.calories,
+              protein: item.protein,
+              carbs: item.carbs,
+              fat: item.fat,
+              servingSize: 100,
+            })
+            const created = createRes.data?.data ?? createRes.data
+            foodId = created?.id
+          }
+
+          if (foodId) {
+            await mealLogService.addItem(mealLogId, { foodId, quantity: 100 })
+          }
+        } catch {
+          // Bỏ qua nếu không thêm được 1 món
+        }
+      }
+
+      qc.invalidateQueries({ queryKey: ['meal-logs'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+      toast.success(`Đã thêm ${selected.length} món vào ${MEAL_TYPE_OPTIONS.find(m => m.value === mealType)?.label ?? mealType}`)
+      navigate('/food-log')
+    } catch (err) {
+      toast.error('Không thể thêm vào nhật ký')
+    } finally {
+      setAddingToLog(false)
+    }
+  }
 
   return (
     <>
@@ -71,7 +134,9 @@ export default function AiScanPage() {
           <p>Nhận diện thực phẩm bằng ảnh · Powered by AI</p>
         </div>
         <div className="topbar-right">
-          <button className="btn btn-ghost2 btn-sm" onClick={() => navigate('/food-log')}>← Nhật ký hôm nay</button>
+          <button className="btn btn-ghost2 btn-sm" onClick={() => navigate('/food-log')}>
+            ← Nhật ký hôm nay
+          </button>
         </div>
       </div>
 
@@ -89,7 +154,7 @@ export default function AiScanPage() {
         </div>
 
         <div className="scan-card fade-up" style={{ animationDelay: '.07s' }}>
-          
+
           {step === 'upload' && (
             <div id="state-upload">
               <div style={{ padding: '20px 24px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -101,39 +166,52 @@ export default function AiScanPage() {
               </div>
               <div className="upload-zone" onClick={() => fileRef.current?.click()}>
                 <div style={{ fontSize: 64, marginBottom: 16 }}>🍽️</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--green-dark)', marginBottom: 6 }}>Kéo & thả ảnh vào đây</div>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>Hỗ trợ JPG, PNG, HEIC · tối đa 20MB</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--green-dark)', marginBottom: 6 }}>
+                  Kéo & thả ảnh vào đây
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>
+                  Hỗ trợ JPG, PNG, HEIC · tối đa 20MB
+                </div>
                 <div className="upload-camera-row" onClick={(e) => e.stopPropagation()}>
-                  <button className="btn btn-primary" onClick={handleDemoScan}>
-                    <svg width="15" height="15" fill="none" viewBox="0 0 15 15"><rect x="1" y="3" width="13" height="9" rx="2" stroke="currentColor" strokeWidth="1.3"/><circle cx="7.5" cy="7.5" r="2" stroke="currentColor" strokeWidth="1.3"/><path d="M5 1h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                  {/* Camera input (mobile: captures from camera) */}
+                  <button className="btn btn-primary" onClick={() => cameraRef.current?.click()}>
+                    <svg width="15" height="15" fill="none" viewBox="0 0 15 15">
+                      <rect x="1" y="3" width="13" height="9" rx="2" stroke="currentColor" strokeWidth="1.3"/>
+                      <circle cx="7.5" cy="7.5" r="2" stroke="currentColor" strokeWidth="1.3"/>
+                      <path d="M5 1h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                    </svg>
                     Chụp ảnh
                   </button>
-                  <button className="btn btn-ghost2" onClick={handleDemoScan}>
-                    <svg width="15" height="15" fill="none" viewBox="0 0 15 15"><rect x="1" y="1" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="1.3"/><path d="M4 8l2.5 2.5L11 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <button className="btn btn-ghost2" onClick={() => fileRef.current?.click()}>
+                    <svg width="15" height="15" fill="none" viewBox="0 0 15 15">
+                      <rect x="1" y="1" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="1.3"/>
+                      <path d="M4 8l2.5 2.5L11 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
                     Chọn từ thư viện
                   </button>
                 </div>
-                <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+                {/* File input: gallery */}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+                />
+                {/* Camera input: capture */}
+                <input
+                  ref={cameraRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  style={{ display: 'none' }}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+                />
               </div>
-              
-              <div style={{ padding: '0 24px 24px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: 'var(--text-muted)', marginBottom: 12 }}>Lần quét gần đây</div>
-                <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
-                  <div style={{ flexShrink: 0, width: 90, cursor: 'pointer' }} onClick={handleDemoScan}>
-                    <div style={{ width: 90, height: 72, background: 'var(--green-light)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, marginBottom: 6, border: '2px solid transparent', transition: 'border .15s' }}>🍚</div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--green-dark)', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Cơm gà xào</div>
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center' }}>480 kcal · 2h ago</div>
-                  </div>
-                  <div style={{ flexShrink: 0, width: 90 }}>
-                    <div style={{ width: 90, height: 72, background: '#fef3e2', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, marginBottom: 6 }}>🥣</div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--green-dark)', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Yến mạch</div>
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center' }}>320 kcal · hôm qua</div>
-                  </div>
-                  <div style={{ flexShrink: 0, width: 90 }}>
-                    <div style={{ width: 90, height: 72, background: '#f0f4ff', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, marginBottom: 6 }}>🍜</div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--green-dark)', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Phở bò</div>
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center' }}>620 kcal · 2 ngày</div>
-                  </div>
+
+              <div style={{ padding: '16px 24px 24px' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  Chọn ảnh bữa ăn để AI phân tích dinh dưỡng tự động
                 </div>
               </div>
             </div>
@@ -141,9 +219,15 @@ export default function AiScanPage() {
 
           {step === 'loading' && (
             <div id="state-loading" className="loading-state">
-              <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--green-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, margin: '0 auto 20px', animation: 'pulse 1.5s ease-in-out infinite' }}>🔍</div>
-              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, fontWeight: 700, color: 'var(--green-dark)', marginBottom: 6 }}>Đang thuật toán phân tích...</div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>AI đang xử lý hình ảnh của bạn</div>
+              <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--green-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, margin: '0 auto 20px', animation: 'pulse 1.5s ease-in-out infinite' }}>
+                🔍
+              </div>
+              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, fontWeight: 700, color: 'var(--green-dark)', marginBottom: 6 }}>
+                Đang phân tích...
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
+                AI đang xử lý hình ảnh của bạn
+              </div>
               <div className="scan-bar"><div className="scan-progress"></div></div>
               <div className="scan-dots">
                 <div className="scan-dot"></div>
@@ -159,10 +243,16 @@ export default function AiScanPage() {
 
               <div style={{ padding: '20px 24px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
                 <div>
-                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 700, color: 'var(--green-dark)' }}>Món ăn được nhận diện</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Nhận diện {results.length} món trong ảnh</div>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 700, color: 'var(--green-dark)' }}>
+                    Món ăn được nhận diện
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                    Nhận diện {results.length} món trong ảnh
+                  </div>
                 </div>
-                <button className="btn btn-ghost2 btn-sm" onClick={() => setStep('upload')}>↺ Quét lại</button>
+                <button className="btn btn-ghost2 btn-sm" onClick={() => setStep('upload')}>
+                  ↺ Quét lại
+                </button>
               </div>
 
               <div className="result-summary">
@@ -191,24 +281,31 @@ export default function AiScanPage() {
               <div>
                 {results.map((item, i) => (
                   <div key={i} className="detected-item">
-                    <input 
-                      type="checkbox" 
-                      className="di-check" 
-                      checked={selectedItems[i]} 
+                    <input
+                      type="checkbox"
+                      className="di-check"
+                      checked={selectedItems[i]}
                       onChange={() => {
-                        const newSelected = [...selectedItems]
-                        newSelected[i] = !newSelected[i]
-                        setSelectedItems(newSelected)
-                      }} 
+                        const next = [...selectedItems]
+                        next[i] = !next[i]
+                        setSelectedItems(next)
+                      }}
                     />
-                    <div className="di-avatar">{i === 0 ? '🍚' : i === 1 ? '🍗' : i === 2 ? '🥦' : '🥚'}</div>
+                    <div className="di-avatar">{FOOD_ICONS[i % FOOD_ICONS.length]}</div>
                     <div className="di-info">
                       <div className="di-name">{item.name}</div>
-                      <div className="di-sub">1 phần</div>
-                      {item.confidence && (
+                      <div className="di-sub">1 phần · {item.carbs}g carbs · {item.protein}g protein · {item.fat}g fat</div>
+                      {item.confidence != null && (
                         <div className="di-confidence" style={{ marginTop: 4 }}>
-                          <div className="conf-bar"><div className="conf-fill" style={{ width: `${item.confidence * 100}%`, background: item.confidence > 0.8 ? '#3a8f67' : '#f4a62a' }}></div></div>
-                          <span className="conf-pct" style={{ color: item.confidence > 0.8 ? 'var(--text-muted)' : '#c47a00' }}>{Math.round(item.confidence * 100)}%</span>
+                          <div className="conf-bar">
+                            <div
+                              className="conf-fill"
+                              style={{ width: `${item.confidence * 100}%`, background: item.confidence > 0.8 ? '#3a8f67' : '#f4a62a' }}
+                            ></div>
+                          </div>
+                          <span className="conf-pct" style={{ color: item.confidence > 0.8 ? 'var(--text-muted)' : '#c47a00' }}>
+                            {Math.round(item.confidence * 100)}%
+                          </span>
                         </div>
                       )}
                     </div>
@@ -216,7 +313,6 @@ export default function AiScanPage() {
                       <div className="di-cal">{item.calories}</div>
                       <div className="di-cal-unit">kcal</div>
                     </div>
-                    <button className="di-edit" title="Chỉnh sửa">✏️</button>
                   </div>
                 ))}
               </div>
@@ -224,27 +320,38 @@ export default function AiScanPage() {
               <div style={{ padding: '20px 24px 24px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 2 }}>Calo từ các món đã chọn</div>
-                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 700, color: 'var(--green-dark)', lineHeight: 1 }}>{selectedCals}</div>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 700, color: 'var(--green-dark)', lineHeight: 1 }}>
+                    {selectedCals}
+                  </div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>kcal · {selectedCount} món</div>
                 </div>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Thêm vào bữa</label>
-                    <select className="input" style={{ padding: '8px 12px', fontSize: 13, minWidth: 140 }}>
-                      <option>🌅 Bữa sáng</option>
-                      <option>☀️ Bữa trưa</option>
-                      <option>🍊 Bữa phụ</option>
-                      <option>🌙 Bữa tối</option>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                      Thêm vào bữa
+                    </label>
+                    <select
+                      className="input"
+                      style={{ padding: '8px 12px', fontSize: 13, minWidth: 140 }}
+                      value={mealType}
+                      onChange={e => setMealType(e.target.value)}
+                    >
+                      {MEAL_TYPE_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
                     </select>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                    <button className="btn btn-primary" onClick={() => navigate('/food-log')}>
-                      + Thêm vào nhật ký
+                    <button
+                      className="btn btn-primary"
+                      disabled={selectedCount === 0 || addingToLog}
+                      onClick={handleAddToLog}
+                    >
+                      {addingToLog ? '⏳ Đang thêm...' : `+ Thêm ${selectedCount} món`}
                     </button>
                   </div>
                 </div>
               </div>
-
             </div>
           )}
         </div>
@@ -268,7 +375,6 @@ export default function AiScanPage() {
             </div>
           </div>
         )}
-
       </div>
     </>
   )

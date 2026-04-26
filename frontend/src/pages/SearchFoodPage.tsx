@@ -80,24 +80,26 @@ export default function SearchFoodPage() {
   const addFoodToLog = async (food: Food, amountMultiplier: number) => {
     try {
       const mealList = Array.isArray(dailyLogs) ? dailyLogs : (dailyLogs?.meals ?? [])
-      let targetLog = mealList.find((m: any) => m.mealType === mealTarget)
+      // Backend stores meal_type as uppercase (BREAKFAST, LUNCH, etc.)
+      const mealTypeUpper = mealTarget.toUpperCase()
+      let targetLog = mealList.find((m: any) =>
+        (m.mealType ?? m.meal_type ?? '').toUpperCase() === mealTypeUpper
+      )
 
       if (!targetLog) {
-        // Create it first! Wait, the mutation might just return the created log or void
-        await createMeal({ mealType: mealTarget, date: dateParam })
-        // Let's assume it invalidates and the back end creates it... wait, it's safer to just let the backend handle create if missing, but our API uses POST `/api/meal-logs`
-        // Actually, if we just alert success, user goes back to log and sees it.
-        // Let's just create meal and then we don't have the ID immediately unless we wait.
-        // Let me just navigate back and let the user add from dashboard? No, I must add it.
-        // If my hook returns data: targetLog = createdLog
-        // I will just use `addItem` on the `targetLog.id`.
+        // Create a new meal log and get back the created log ID
+        const res: any = await createMeal({ mealType: mealTarget, date: dateParam })
+        // Response may be wrapped in data.data or data
+        targetLog = res?.data?.data ?? res?.data ?? res
       }
-      // Assuming targetLog is found now. If not, it means we must wait for `dailyLogs` to update. 
-      // I'll skip robust creation for now and just rely on targetLog if exists, else wait.
-      if (targetLog) {
-        await addItem({ mealLogId: targetLog.id, foodId: food.id, quantity: (food.servingSize ?? 100) * amountMultiplier })
+
+      if (targetLog?.id) {
+        const qty = (food.servingSize ?? 100) * amountMultiplier
+        await addItem({ mealLogId: targetLog.id, foodId: food.id, quantity: qty })
+        navigate('/food-log')
+      } else {
+        throw new Error('Could not resolve meal log ID')
       }
-      navigate('/food-log')
     } catch (err) {
       console.error(err)
     }

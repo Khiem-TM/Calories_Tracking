@@ -1,178 +1,261 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Camera } from 'lucide-react'
+import { useDailyMealLogs, useDeleteMealItem } from '@/features/meal-logs/hooks/useMealLogs'
+import { useDailyDashboard } from '@/features/dashboard/hooks/useDashboard'
+import { useActivityLogs, useLogWater } from '@/features/activity-logs/hooks/useActivityLogs'
 import { ListSkeleton } from '@/components/common/LoadingSkeleton'
-import { useDailyMealLogs } from '@/features/meal-logs/hooks/useMealLogs'
 import type { MealLog } from '@/types/api'
 import '@/assets/foodlog.css'
 
-const MEAL_TYPES = [
-  { id: 'breakfast', name: 'Bữa sáng', emoji: '🌅', goal: 550 },
-  { id: 'lunch', name: 'Bữa trưa', emoji: '☀️', goal: 700 },
-  { id: 'snack', name: 'Bữa phụ', emoji: '🍊', goal: 200 },
-  { id: 'dinner', name: 'Bữa tối', emoji: '🌙', goal: 750 },
-]
-
 function formatDate(d: Date) { return d.toISOString().split('T')[0] }
-
-// Helper function to extract emoji or use default
-const getFoodEmoji = (foodName: string) => {
-  const map: Record<string, string> = {
-    'cơm': '🍚', 'phở': '🍜', 'chuối': '🍌', 'bơ': '🥑', 'táo': '🍎',
-    'cam': '🍊', 'bánh': '🥐', 'trứng': '🥚', 'sữa': '🥛', 'thịt': '🥩',
-    'salad': '🥗', 'nước': '🥤', 'gà': '🍗'
-  }
-  const nameLower = foodName.toLowerCase()
-  for (const [key, emoji] of Object.entries(map)) {
-    if (nameLower.includes(key)) return emoji
-  }
-  return '🍽️'
+function getViDateFull(d: Date) {
+  return `Hôm nay, ${d.getDate()} Th${d.getMonth() + 1 < 10 ? 'g ' + (d.getMonth() + 1) : 'g ' + (d.getMonth() + 1)}`
 }
+function formatDateHeader(d: Date) {
+  const isToday = formatDate(d) === formatDate(new Date())
+  if (isToday) return `Hôm nay, ${d.getDate()} Th${d.getMonth() + 1}`
+  return `${d.getDate()} Tháng ${d.getMonth() + 1}`
+}
+
+const MEAL_TYPES = [
+  { id: 'BREAKFAST', name: 'Bữa sáng', emoji: '🌅', bg: '#fff7ed', targetMin: 400, targetMax: 500 },
+  { id: 'LUNCH', name: 'Bữa trưa', emoji: '☀️', bg: '#fffbeb', targetMin: 500, targetMax: 700 },
+  { id: 'SNACK', name: 'Bữa phụ', emoji: '🌿', bg: '#f0fbf5', targetMin: 100, targetMax: 200 },
+  { id: 'DINNER', name: 'Bữa tối', emoji: '🌙', bg: '#f0f4ff', targetMin: 400, targetMax: 600 },
+]
 
 export default function FoodLogPage() {
   const [date, setDate] = useState(new Date())
   const navigate = useNavigate()
-  
   const dateStr = formatDate(date)
   const isToday = dateStr === formatDate(new Date())
 
   const { data: meals, isLoading } = useDailyMealLogs(dateStr)
+  const { data: dashboardData } = useDailyDashboard(dateStr)
+  const { data: activityData } = useActivityLogs(dateStr)
+  const { mutate: deleteItem } = useDeleteMealItem()
 
-  const mealList: MealLog[] = Array.isArray(meals) ? meals : (meals?.meals ?? [])
+  const mealList: MealLog[] = Array.isArray(meals) ? meals : ((meals as any)?.meals ?? [])
 
   const prevDay = () => { const d = new Date(date); d.setDate(d.getDate() - 1); setDate(d) }
   const nextDay = () => { if (!isToday) { const d = new Date(date); d.setDate(d.getDate() + 1); setDate(d) } }
 
+  // Group by meal type
   const groupedMeals = MEAL_TYPES.map(type => {
-    const mealLogs = mealList.filter(m => m.mealType === type.id)
-    // Flatten items from all meal logs of this type (if there are multiple)
-    const items = mealLogs.flatMap(m => m.items || [])
-    const totalCals = items.reduce((sum, item) => sum + (item.calories ?? 0), 0)
-    return {
-      ...type,
-      logs: mealLogs,
-      items,
-      totalCals
-    }
+    const logs = mealList.filter(m => {
+      const mt = (m.mealType ?? (m as any).meal_type ?? '').toUpperCase()
+      return mt === type.id
+    })
+    const items = logs.flatMap(m => m.items ?? [])
+    const totalCals = Math.round(items.reduce((s, i) => s + ((i as any).calories ?? (i as any).calories_snapshot ?? 0), 0))
+    return { ...type, logs, items, totalCals }
   })
 
-  // Summary calculations
-  const totalCalories = groupedMeals.reduce((sum, m) => sum + m.totalCals, 0)
-  const goalCalories = 2200
-  const remainingCals = Math.max(goalCalories - totalCalories, 0)
-  
-  const allItems = groupedMeals.flatMap(m => m.items)
-  const totalCarbs = allItems.reduce((sum, item) => sum + (item.carbs ?? 0), 0)
-  const totalProtein = allItems.reduce((sum, item) => sum + (item.protein ?? 0), 0)
-  const totalFat = allItems.reduce((sum, item) => sum + (item.fat ?? 0), 0)
+  // Summary data
+  const d: any = dashboardData ?? {}
+  const goalCalories = d.calorieGoal ?? 2000
+  const totalEaten = Math.round(d.totalCalories ?? 0)
+  const calsBurned = activityData?.caloriesBurned ?? 0
+  const remaining = Math.max(goalCalories - totalEaten, 0)
+  const carbGoal = d.carbsGoal ?? Math.round((goalCalories * 0.5) / 4)
+  const proGoal = d.proteinGoal ?? Math.round((goalCalories * 0.2) / 4)
+  const fatGoal = d.fatGoal ?? Math.round((goalCalories * 0.3) / 9)
+  const carbTotal = Math.round(d.totalCarbs ?? 0)
+  const proTotal = Math.round(d.totalProtein ?? 0)
+  const fatTotal = Math.round(d.totalFat ?? 0)
 
-  // Donut chart calculations
-  const percent = Math.min((totalCalories / goalCalories) * 100, 100)
-  const strokeDash = (percent / 100) * 301
-  const displayDateText = isToday ? 'Hôm nay' : date.toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit' })
+  const waterIntake = activityData?.waterIntake ?? 0
+  const waterGoal = d.waterGoal ?? 8
+
+  // Donut for energy overview (green ring)
+  const R = 66
+  const C2 = 2 * Math.PI * R
+  const eaten_pct = goalCalories > 0 ? Math.min(totalEaten / goalCalories, 1) : 0
+  const eatenStroke = eaten_pct * C2
+  const { mutate: logWater } = useLogWater()
 
   return (
     <>
-      <div className="topbar">
-        <div className="topbar-left">
-          <h1>Nhật ký ăn uống</h1>
-          <p>Theo dõi toàn bộ bữa ăn trong ngày</p>
+      {/* ===== TOP BAR ===== */}
+      <div className="fl-topbar">
+        <div className="fl-topbar-left">
+          <button className="fl-nav-btn" onClick={prevDay}>‹</button>
+          <div className="fl-date-info">
+            <div className="fl-date-main">{formatDateHeader(date)}</div>
+            <div className="fl-date-sub">Nhật ký ăn uống</div>
+          </div>
+          <button className="fl-nav-btn" onClick={nextDay} disabled={isToday} style={{ opacity: isToday ? 0.3 : 1 }}>›</button>
+          <button className="fl-calendar-btn" title="Chọn ngày">
+            <svg width="15" height="15" fill="none" viewBox="0 0 15 15">
+              <rect x=".75" y="1.75" width="13.5" height="12.5" rx="2.25" stroke="currentColor" strokeWidth="1.2"/>
+              <path d="M5 .75v2M10 .75v2M.75 5.75h13.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+          </button>
         </div>
-        <div className="topbar-right">
-          <button className="btn btn-ghost2 btn-sm" onClick={prevDay}>← Hôm qua</button>
-          <div className="date-badge" id="date-display">{displayDateText}</div>
-          <button className="btn btn-ghost2 btn-sm" disabled={isToday} style={{ opacity: isToday ? 0.3 : 1 }} onClick={nextDay}>Ngày mai →</button>
-          <Link to={`/search-food?date=${dateStr}`} className="btn btn-ghost2 btn-sm">+ Nhập bữa ăn</Link>
-          <Link to="/ai-scan" className="btn btn-ghost2 btn-sm" style={{ gap: 5 }}><Camera size={14}/> AI Scan</Link>
-          <Link to="/create-food" className="btn btn-primary btn-sm">+ Thêm thực phẩm</Link>
+        <div className="fl-topbar-right">
+          <button className="fl-btn-add" onClick={() => navigate(`/search-food?date=${dateStr}`)}>
+            + Thêm bữa ăn
+          </button>
+          <button className="fl-btn-scan" onClick={() => navigate('/ai-scan')}>
+            📷 Quét AI
+          </button>
         </div>
       </div>
 
+      {/* ===== BODY ===== */}
       {isLoading ? (
-        <ListSkeleton count={4} />
+        <div style={{ padding: '20px 28px' }}><ListSkeleton count={4} /></div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20, alignItems: 'start' }}>
-          {/* LEFT: Meal log */}
+        <div className="fl-body">
+          {/* LEFT: Meal cards */}
           <div>
-            {groupedMeals.map((mealGroup, idx) => (
-              <div key={mealGroup.id} className="meal-section fade-up" style={{ animationDelay: `${idx * 0.04}s` }}>
-                <div className="meal-section-header">
-                  <div className="meal-section-title">{mealGroup.emoji} {mealGroup.name}</div>
-                  <div className="meal-section-kcal">{mealGroup.totalCals} / {mealGroup.goal} kcal</div>
-                </div>
-                <div className="meal-section-body">
-                  {mealGroup.items.length === 0 ? (
-                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                      Chưa có thực phẩm nào được ghi.
+            {groupedMeals.map((mg, idx) => (
+              <div key={mg.id} className="fl-meal-card fade-up" style={{ animationDelay: `${idx * 0.06}s` }}>
+                <div className="fl-meal-header">
+                  <div className="fl-meal-header-left">
+                    <div className="fl-meal-emoji" style={{ background: mg.bg }}>
+                      {mg.emoji}
                     </div>
-                  ) : (
-                    mealGroup.items.map(item => (
-                      <div className="food-row" key={item.id}>
-                        <div className="food-emoji">{getFoodEmoji(item.food?.name ?? '')}</div>
-                        <div className="food-info">
-                          <div className="food-name">{item.food?.name}</div>
-                          <div className="food-detail">{item.quantity}g</div>
-                        </div>
-                        <div className="food-macros">
-                          <div className="macro-chip"><div className="val">{item.carbs}g</div><div className="lbl">Carbs</div></div>
-                          <div className="macro-chip"><div className="val">{item.protein}g</div><div className="lbl">Protein</div></div>
-                          <div className="macro-chip"><div className="val">{item.fat}g</div><div className="lbl">Fat</div></div>
-                        </div>
-                        <div className="food-kcal-big">{item.calories} kcal</div>
-                        <button className="delete-btn" title="Xoá thực phẩm này">✕</button>
-                      </div>
-                    ))
-                  )}
-                  <button 
-                    className="add-food-btn" 
-                    onClick={() => navigate(`/search-food?mealType=${mealGroup.id}&date=${dateStr}`)}
-                  >
-                    <svg width="16" height="16" fill="none" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.3"/><path d="M5 8h6M8 5v6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
-                    Thêm thực phẩm vào {mealGroup.name.toLowerCase()}
-                  </button>
+                    <div>
+                      <div className="fl-meal-type-name">{mg.name}</div>
+                      <div className="fl-meal-target">Mục tiêu: {mg.targetMin} - {mg.targetMax} kcal</div>
+                    </div>
+                  </div>
+                  <div className="fl-meal-header-right">
+                    <div className="fl-meal-total-kcal">{mg.totalCals} kcal</div>
+                    <Link
+                      to={`/search-food?mealType=${mg.id.toLowerCase()}&date=${dateStr}`}
+                      className="fl-add-food-link"
+                    >
+                      Thêm thực phẩm
+                    </Link>
+                  </div>
                 </div>
+
+                {mg.items.length > 0 && (
+                  <div className="fl-food-items">
+                    {mg.items.map((item: any) => {
+                      const food = item.food ?? {}
+                      const qty = item.quantity ?? item.quantity_in_grams ?? 0
+                      const unit = item.serving_unit ?? 'g'
+                      const cals = Math.round(item.calories ?? item.calories_snapshot ?? 0)
+                      const carbG = Math.round(item.carbs ?? item.carbs_snapshot ?? 0)
+                      const fatG = Math.round(item.fat ?? item.fat_snapshot ?? 0)
+                      const proG = Math.round(item.protein ?? item.protein_snapshot ?? 0)
+                      const imgUrl = food.image_urls?.[0] ?? food.imageUrl ?? null
+
+                      return (
+                        <div className="fl-food-item" key={item.id}>
+                          <div className="fl-food-img">
+                            {imgUrl
+                              ? <img src={imgUrl} alt={food.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              : <span style={{ fontSize: 20 }}>🍽️</span>
+                            }
+                          </div>
+                          <div className="fl-food-name-col">
+                            <div className="fl-food-name">{food.name ?? 'Thực phẩm'}</div>
+                            <div className="fl-food-portion">
+                              {qty}{unit} • {cals} kcal
+                            </div>
+                          </div>
+                          <div className="fl-food-macros-col">
+                            <div className="fl-macro-label">Macros</div>
+                            <div className="fl-macro-values">
+                              <span>{carbG}C</span> • <span>{fatG}F</span> • <span>{proG}P</span>
+                            </div>
+                          </div>
+                          <button
+                            className="fl-remove-btn"
+                            onClick={() => deleteItem({ mealLogId: mg.logs[0]?.id ?? '', itemId: item.id })}
+                            title="Xóa"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             ))}
           </div>
 
-          {/* RIGHT: Summary */}
-          <div style={{ position: 'sticky', top: 80 }}>
-            <div className="card fade-up" style={{ marginBottom: 16 }}>
-              <div className="card-header"><span className="card-title">Tổng ngày hôm nay</span></div>
-              <div className="card-pad">
-                <div style={{ textAlign: 'center', marginBottom: 16, position: 'relative', display: 'inline-block', left: '50%', transform: 'translateX(-50%)' }}>
-                  <svg width="120" height="120" viewBox="0 0 120 120" style={{ transform: 'rotate(-90deg)' }}>
-                    <circle cx="60" cy="60" r="48" fill="none" stroke="#eef8f2" strokeWidth="12"/>
-                    <circle cx="60" cy="60" r="48" fill="none" stroke="#3a8f67" strokeWidth="12"
-                      strokeDasharray={`${strokeDash} 301`} strokeLinecap="round"/>
-                  </svg>
-                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 700, color: 'var(--green-dark)', lineHeight: 1 }}>{totalCalories}</span>
-                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>/ {goalCalories} kcal</span>
-                  </div>
+          {/* RIGHT: Sidebar */}
+          <div className="fl-sidebar">
+            {/* Energy overview */}
+            <div className="fl-sidebar-card fade-up" style={{ animationDelay: '.08s' }}>
+              <div className="fl-sb-title">Tổng quan năng lượng</div>
+              <div className="fl-energy-donut-wrap">
+                <svg width="160" height="160" viewBox="0 0 160 160" style={{ transform: 'rotate(-90deg)' }}>
+                  <circle cx="80" cy="80" r={R} fill="none" stroke="#e8f3ed" strokeWidth="14" />
+                  <circle cx="80" cy="80" r={R} fill="none" stroke="#1a3829" strokeWidth="14"
+                    strokeDasharray={`${eatenStroke} ${C2}`} strokeLinecap="round" />
+                </svg>
+                <div className="fl-donut-center">
+                  <div className="fl-donut-remain">{remaining.toLocaleString()}</div>
+                  <div className="fl-donut-remain-label">Còn lại</div>
                 </div>
-                <div className="summary-row"><span className="summary-label">Còn lại</span><span className="summary-val" style={{ color: 'var(--green-accent)' }}>{remainingCals} kcal</span></div>
-                <div style={{ height: 1, background: 'var(--border)', margin: '10px 0' }}></div>
-                <div className="summary-row"><span className="summary-label">Carbs</span><span className="summary-val">{totalCarbs.toFixed(0)} / 260g</span></div>
-                <div className="summary-row"><span className="summary-label">Protein</span><span className="summary-val">{totalProtein.toFixed(0)} / 125g</span></div>
-                <div className="summary-row"><span className="summary-label">Fat</span><span className="summary-val">{totalFat.toFixed(0)} / 70g</span></div>
-                <div style={{ height: 1, background: 'var(--border)', margin: '10px 0' }}></div>
-                <div className="summary-row"><span className="summary-label">Calories đốt</span><span className="summary-val" style={{ color: 'var(--green-accent)' }}>- 540 kcal</span></div>
-                <div className="summary-row"><span className="summary-label">Calories thực</span><span className="summary-val">{Math.max(totalCalories - 540, 0)} kcal</span></div>
+              </div>
+              <div className="fl-energy-row">
+                <div className="fl-energy-col">
+                  <div className="fl-energy-col-label">Mục tiêu</div>
+                  <div className="fl-energy-col-val">{goalCalories.toLocaleString()}</div>
+                </div>
+                <div className="fl-energy-col">
+                  <div className="fl-energy-col-label">Đã ăn</div>
+                  <div className="fl-energy-col-val green">{totalEaten.toLocaleString()}</div>
+                </div>
+                <div className="fl-energy-col">
+                  <div className="fl-energy-col-label">Đốt cháy</div>
+                  <div className="fl-energy-col-val orange">{calsBurned}</div>
+                </div>
               </div>
             </div>
 
-            <div className="card fade-up" style={{ animationDelay: '.1s' }}>
-              <div className="card-header"><span className="card-title">Vi chất nổi bật</span></div>
-              <div className="card-pad">
-                <div className="summary-row"><span className="summary-label">Vitamin C</span><span className="summary-val">82 / 90mg</span></div>
-                <div style={{ margin: '4px 0 10px' }}><div className="prog-bar"><div className="prog-fill" style={{ width: '91%' }}></div></div></div>
-                <div className="summary-row"><span className="summary-label">Canxi</span><span className="summary-val">620 / 1000mg</span></div>
-                <div style={{ margin: '4px 0 10px' }}><div className="prog-bar"><div className="prog-fill orange" style={{ width: '62%' }}></div></div></div>
-                <div className="summary-row"><span className="summary-label">Sắt</span><span className="summary-val">11 / 18mg</span></div>
-                <div style={{ margin: '4px 0 10px' }}><div className="prog-bar"><div className="prog-fill red" style={{ width: '61%' }}></div></div></div>
-                <div className="summary-row"><span className="summary-label">Chất xơ</span><span className="summary-val">18 / 30g</span></div>
-                <div style={{ margin: '4px 0 0' }}><div className="prog-bar"><div className="prog-fill blue" style={{ width: '60%' }}></div></div></div>
+            {/* Macros */}
+            <div className="fl-sidebar-card fade-up" style={{ animationDelay: '.14s' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <div className="fl-sb-title" style={{ margin: 0 }}>Đa lượng</div>
+                <button className="fl-macro-more-btn">···</button>
+              </div>
+              <div className="fl-macro-sb-row">
+                <div className="fl-macro-sb-name">Carbs</div>
+                <div className="fl-macro-sb-bar">
+                  <div className="fl-macro-sb-fill" style={{ width: `${carbGoal > 0 ? Math.min((carbTotal/carbGoal)*100,100) : 0}%`, background: '#f97316' }} />
+                </div>
+                <div className="fl-macro-sb-vals">{carbTotal}g / {carbGoal}g</div>
+              </div>
+              <div className="fl-macro-sb-row">
+                <div className="fl-macro-sb-name">Protein</div>
+                <div className="fl-macro-sb-bar">
+                  <div className="fl-macro-sb-fill" style={{ width: `${proGoal > 0 ? Math.min((proTotal/proGoal)*100,100) : 0}%`, background: '#1a8a4a' }} />
+                </div>
+                <div className="fl-macro-sb-vals">{proTotal}g / {proGoal}g</div>
+              </div>
+              <div className="fl-macro-sb-row">
+                <div className="fl-macro-sb-name">Fat</div>
+                <div className="fl-macro-sb-bar">
+                  <div className="fl-macro-sb-fill" style={{ width: `${fatGoal > 0 ? Math.min((fatTotal/fatGoal)*100,100) : 0}%`, background: '#f4c542' }} />
+                </div>
+                <div className="fl-macro-sb-vals">{fatTotal}g / {fatGoal}g</div>
+              </div>
+            </div>
+
+            {/* Water */}
+            <div className="fl-sidebar-card fade-up" style={{ animationDelay: '.2s' }}>
+              <div className="fl-water-row">
+                <div className="fl-water-icon">💧</div>
+                <div className="fl-water-text-col">
+                  <div className="fl-water-text-label">Nước</div>
+                  <div className="fl-water-text-val">{waterIntake} / {waterGoal} ly ({waterIntake * 250}ml)</div>
+                </div>
+                <button
+                  className="fl-water-add-btn"
+                  onClick={() => logWater({ date: dateStr, glasses: waterIntake + 1 })}
+                  title="Thêm 1 ly"
+                >
+                  +
+                </button>
               </div>
             </div>
           </div>

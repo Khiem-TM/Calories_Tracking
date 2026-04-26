@@ -189,6 +189,8 @@ export interface Blog {
   status: 'draft' | 'pending' | 'approved' | 'rejected'
   likesCount: number
   commentsCount: number
+  viewCount: number
+  thumbnailUrl?: string
   createdAt: string
   updatedAt: string
 }

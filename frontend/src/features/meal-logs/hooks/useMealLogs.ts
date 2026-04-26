@@ -19,13 +19,13 @@ export function useMealLogSummary(date?: string) {
 export function useCreateMealLog() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: mealLogService.create,
+    mutationFn: (data: { mealType: string; date: string; notes?: string }) =>
+      mealLogService.create(data).then((r) => r.data?.data ?? r.data),
     onSuccess: () => {
-      toast.success('Meal logged!')
       qc.invalidateQueries({ queryKey: ['meal-logs'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
-    onError: () => toast.error('Failed to log meal'),
+    onError: () => toast.error('Không thể tạo nhật ký bữa ăn'),
   })
 }
 

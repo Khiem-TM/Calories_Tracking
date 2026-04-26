@@ -47,8 +47,6 @@ export class AdminService {
     private readonly configService: ConfigService,
   ) {}
 
-  // ─── Admin Auth ────────────────────────────────────────────────────────────
-
   async adminLogin(
     email: string,
     password: string,

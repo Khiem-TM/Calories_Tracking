@@ -1,0 +1,398 @@
+/* ===== DASHBOARD PAGE ===== */
+
+/* --- Topbar header --- */
+.db-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 32px 12px;
+}
+.db-header-left h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--green-dark);
+  font-family: 'Playfair Display', serif;
+  line-height: 1.2;
+}
+.db-header-left .db-date {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.db-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.db-icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all .2s;
+}
+.db-icon-btn:hover { background: var(--green-light); color: var(--green-dark); }
+.db-user-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 100px;
+  border: 1px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--green-dark);
+  transition: all .2s;
+}
+.db-user-pill:hover { background: var(--green-light); }
+.db-user-pill .ava {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--green-accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #fff;
+}
+
+/* --- Stat cards row --- */
+.db-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  padding: 0 32px 20px;
+}
+.db-stat-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e8f2ec;
+  padding: 18px 20px;
+  box-shadow: 0 1px 8px rgba(30,77,53,0.05);
+  position: relative;
+}
+.db-stat-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+.db-stat-badge.green { background: #e8f8ef; color: #1a8a4a; }
+.db-stat-badge.grey { background: #f0f0f0; color: #888; }
+.db-stat-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 12px;
+  font-size: 18px;
+}
+.db-stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.db-stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--green-dark);
+  line-height: 1.1;
+}
+.db-stat-value small {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.db-stat-bar {
+  height: 4px;
+  background: #eee;
+  border-radius: 100px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+.db-stat-bar-fill {
+  height: 100%;
+  border-radius: 100px;
+  transition: width .6s ease;
+}
+
+/* --- Two-column grid --- */
+.db-grid {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 16px;
+  padding: 0 32px 32px;
+  align-items: start;
+}
+
+/* --- Nutrition card --- */
+.db-nutrition-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e8f2ec;
+  box-shadow: 0 1px 8px rgba(30,77,53,0.05);
+  padding: 22px 24px;
+  margin-bottom: 14px;
+}
+.db-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--green-dark);
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.db-section-link {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--green-accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+.db-section-link:hover { text-decoration: underline; }
+.db-donut-row {
+  display: flex;
+  gap: 28px;
+  align-items: center;
+}
+.db-donut-wrap { position: relative; flex-shrink: 0; }
+.db-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.db-donut-kcal {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--green-dark);
+  line-height: 1;
+}
+.db-donut-goal {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.db-macro-list { flex: 1; }
+.db-macro-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.db-macro-row:last-child { margin-bottom: 0; }
+.db-macro-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+.db-macro-name {
+  font-size: 13px;
+  color: var(--text-body);
+  width: 60px;
+  flex-shrink: 0;
+}
+.db-macro-bar-wrap { flex: 1; height: 6px; background: #eef8f2; border-radius: 100px; overflow: hidden; }
+.db-macro-bar-fill { height: 100%; border-radius: 100px; transition: width .6s ease; }
+.db-macro-val {
+  font-size: 12px;
+  color: var(--text-muted);
+  width: 80px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* --- Saved meals card --- */
+.db-meals-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e8f2ec;
+  box-shadow: 0 1px 8px rgba(30,77,53,0.05);
+  overflow: hidden;
+}
+.db-meals-header {
+  padding: 18px 22px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f0f7f3;
+}
+.db-meals-add-btn {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: var(--green-light);
+  border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--green-dark); font-size: 16px;
+  transition: all .2s;
+}
+.db-meals-add-btn:hover { background: var(--green-accent); color: #fff; }
+.db-meal-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 22px;
+  border-bottom: 1px solid #f5fbf7;
+  cursor: pointer;
+  transition: background .15s;
+}
+.db-meal-row:last-child { border-bottom: none; }
+.db-meal-row:hover { background: #fafffe; }
+.db-meal-icon {
+  width: 40px; height: 40px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+}
+.db-meal-info { flex: 1 }
+.db-meal-type {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--green-dark);
+}
+.db-meal-items {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.db-meal-kcal {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--green-dark);
+}
+
+/* --- Right column cards --- */
+.db-right-col { display: flex; flex-direction: column; gap: 14px; }
+.db-small-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e8f2ec;
+  box-shadow: 0 1px 8px rgba(30,77,53,0.05);
+  padding: 18px 20px;
+}
+
+/* Water tracker */
+.db-water-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.db-water-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--green-dark);
+}
+.db-water-value small { font-size: 13px; font-weight: 400; color: var(--text-muted); }
+.db-water-cups {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+.db-water-cup {
+  width: 32px; height: 28px; border-radius: 6px;
+  border: 2px solid #e0f0eb;
+  background: transparent;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex; align-items: center; justify-content: center;
+}
+.db-water-cup.filled { background: #4a90e2; border-color: #4a90e2; }
+.db-add-250-btn {
+  margin-top: 6px;
+  width: 100%;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1.5px solid var(--green-accent);
+  background: transparent;
+  color: var(--green-accent);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all .2s;
+}
+.db-add-250-btn:hover { background: var(--green-accent); color: #fff; }
+
+/* Workout section */
+.db-workout-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.db-workout-title { font-size: 14px; font-weight: 700; color: var(--green-dark); }
+.db-more-btn {
+  background: none; border: none;
+  color: var(--text-muted); cursor: pointer;
+  font-size: 16px;
+}
+.db-workout-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.db-workout-icon {
+  width: 42px; height: 42px; border-radius: 12px;
+  background: var(--green-accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+}
+.db-workout-name { font-size: 13px; font-weight: 600; color: var(--green-dark); }
+.db-workout-meta { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.db-workout-kcal { font-size: 18px; font-weight: 700; color: var(--green-dark); text-align: right; }
+.db-workout-kcal-unit { font-size: 10px; text-transform: uppercase; color: var(--text-muted); letter-spacing: .5px; }
+.db-log-activity-btn {
+  margin-top: 14px;
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1.5px solid var(--green-accent);
+  background: transparent;
+  color: var(--green-accent);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: all .2s;
+}
+.db-log-activity-btn:hover { background: var(--green-accent); color: #fff; }
+
+/* AI Insights card */
+.db-ai-card {
+  background: var(--green-dark);
+  border-radius: 16px;
+  padding: 18px 20px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.db-ai-card::before {
+  content: '';
+  position: absolute;
+  top: -20px; right: -20px;
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+}
+.db-ai-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.db-ai-text { font-size: 12px; line-height: 1.55; opacity: .8; margin-bottom: 14px; }
+.db-ai-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: #52d68a;
+  text-decoration: none;
+  display: flex; align-items: center; gap: 4px;
+  cursor: pointer;
+}
+.db-ai-link:hover { opacity: .85; }
