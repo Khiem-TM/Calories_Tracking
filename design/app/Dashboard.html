@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tracker — Dashboard</title>
+<link rel="stylesheet" href="app.css">
+<style>
+  .donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .donut-wrap { position: relative; width: 140px; height: 140px; flex-shrink: 0; }
+  .macro-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .macro-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .macro-label { font-size: 12px; color: var(--text-muted); width: 52px; }
+  .macro-val2 { font-size: 12px; font-weight: 700; color: var(--green-dark); margin-left: auto; }
+  .meal-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .meal-row:last-child { border-bottom: none; }
+  .meal-emoji-sm { width: 34px; height: 34px; border-radius: 10px; background: var(--green-light); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .meal-name-sm { font-size: 13px; font-weight: 600; color: var(--green-dark); }
+  .meal-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .meal-kcal { font-size: 13px; font-weight: 700; color: var(--green-dark); margin-left: auto; }
+  .water-cups { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  .cup { width: 36px; height: 36px; border-radius: 10px; border: 2px solid var(--border); background: var(--bg); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: all .2s; }
+  .cup.filled { background: var(--green-light); border-color: var(--green-accent); }
+  .ex-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .ex-row:last-child { border-bottom: none; }
+  .ex-icon-sm { width: 34px; height: 34px; border-radius: 10px; background: rgba(26,56,41,0.07); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .week-bars { display: flex; gap: 8px; align-items: flex-end; height: 80px; }
+  .week-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .week-bar-bg { width: 100%; background: var(--bg); border-radius: 6px; overflow: hidden; display: flex; align-items: flex-end; }
+  .week-bar-fill { width: 100%; background: var(--green-accent); border-radius: 6px; transition: height .6s ease; }
+  .week-bar-fill.today { background: var(--green-cta); }
+  .week-day { font-size: 10px; color: var(--text-muted); font-weight: 600; }
+  .week-kcal { font-size: 10px; color: var(--text-muted); }
+  .insight-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .insight-row:last-child { border-bottom: none; }
+  .insight-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--green-light); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .insight-text { font-size: 13px; color: var(--text-body); line-height: 1.5; }
+  .insight-text strong { color: var(--green-dark); font-weight: 700; }
+</style>
+</head>
+<body>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <a href="../Landing Page.html" class="sidebar-logo">Tracker<span>.</span></a>
+  <div class="sidebar-section">Menu chính</div>
+  <ul class="sidebar-nav">
+    <li><a href="Dashboard.html" class="active"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="1" y="1" width="7" height="7" rx="2" fill="currentColor"/><rect x="10" y="1" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/><rect x="1" y="10" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/><rect x="10" y="10" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/></svg>Dashboard</a></li>
+    <li><a href="Food Log.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><circle cx="9" cy="9" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M6 9h6M9 6v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Nhật ký ăn uống</a></li>
+    <li><a href="Search Food.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M13 13l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Tìm thực phẩm</a></li>
+    <li><a href="Workout.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M2 9h2m10 0h2M4 9a5 5 0 0110 0M4 9a5 5 0 0010 0M6 7v4M12 7v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Tập luyện</a></li>
+    <li><a href="Body Metrics.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M9 2a4 4 0 100 8 4 4 0 000-8zM3 16c0-3 2.7-5 6-5s6 2 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Body Metrics</a></li>
+    <li><a href="Reports.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M3 14l4-5 3 3 4-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Báo cáo</a></li>
+    <li><a href="Chatbot.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M3 5a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H7l-4 3V5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Trợ lý AI</a></li>
+    <li><a href="Blog.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="2" y="3" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 7h8M5 11h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Blog</a></li>
+  </ul>
+  <div class="sidebar-bottom">
+    <a href="Profile.html" style="text-decoration:none">
+      <div class="user-pill">
+        <div class="user-avatar">TM</div>
+        <div>
+          <div class="user-name">Trần Minh</div>
+          <div class="user-plan">Pro Plan</div>
+        </div>
+      </div>
+    </a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1>Xin chào, Minh 👋</h1>
+      <p>Hôm nay là Thứ Tư, 23 tháng 4 năm 2026</p>
+    </div>
+    <div class="topbar-right">
+      <div class="date-badge">
+        <svg width="14" height="14" fill="none" viewBox="0 0 14 14"><rect x="1" y="2" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M4 1v2M10 1v2M1 6h12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        23/04/2026
+      </div>
+      <div class="topbar-icon-btn notif-dot">
+        <svg width="16" height="16" fill="none" viewBox="0 0 16 16"><path d="M8 1a5 5 0 00-5 5v2l-1.5 2.5h13L13 8V6a5 5 0 00-5-5zM6 12.5a2 2 0 004 0" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- TOP STATS -->
+    <div class="grid-4" style="margin-bottom:20px">
+      <div class="stat-card fade-up" style="animation-delay:.05s">
+        <div class="icon-wrap">🔥</div>
+        <div class="stat-val">1,840</div>
+        <div class="stat-label">Calories hôm nay</div>
+        <div style="margin-top:10px"><div class="prog-bar"><div class="prog-fill" style="width:84%"></div></div></div>
+        <div class="stat-change up" style="margin-top:6px">84% mục tiêu (2,200)</div>
+      </div>
+      <div class="stat-card fade-up" style="animation-delay:.1s">
+        <div class="icon-wrap">🥩</div>
+        <div class="stat-val">92g</div>
+        <div class="stat-label">Protein hôm nay</div>
+        <div style="margin-top:10px"><div class="prog-bar"><div class="prog-fill orange" style="width:73%"></div></div></div>
+        <div class="stat-change up" style="margin-top:6px">73% mục tiêu (125g)</div>
+      </div>
+      <div class="stat-card fade-up" style="animation-delay:.15s">
+        <div class="icon-wrap">🏃</div>
+        <div class="stat-val">540</div>
+        <div class="stat-label">Calories đốt cháy</div>
+        <div style="margin-top:10px"><div class="prog-bar"><div class="prog-fill blue" style="width:67%"></div></div></div>
+        <div class="stat-change up" style="margin-top:6px">67% mục tiêu (800)</div>
+      </div>
+      <div class="stat-card fade-up" style="animation-delay:.2s">
+        <div class="icon-wrap">⚖️</div>
+        <div class="stat-val">68.4<span style="font-size:14px;font-family:'DM Sans',sans-serif;font-weight:400;color:var(--text-muted)">kg</span></div>
+        <div class="stat-label">Cân nặng hiện tại</div>
+        <div class="stat-change up" style="margin-top:16px">↓ 1.6kg từ tháng trước</div>
+      </div>
+    </div>
+
+    <!-- ROW 2: Calories detail + Meals -->
+    <div class="grid-2" style="margin-bottom:20px">
+      <!-- Calories card -->
+      <div class="card fade-up" style="animation-delay:.22s">
+        <div class="card-header">
+          <span class="card-title">Tổng quan dinh dưỡng hôm nay</span>
+          <a href="Food Log.html" class="card-action">Xem chi tiết →</a>
+        </div>
+        <div class="card-pad" style="display:flex;align-items:center;gap:28px">
+          <div class="donut-wrap">
+            <svg width="140" height="140" viewBox="0 0 140 140" class="donut-svg">
+              <circle cx="70" cy="70" r="55" fill="none" stroke="#eef8f2" stroke-width="16"/>
+              <circle cx="70" cy="70" r="55" fill="none" stroke="#3a8f67" stroke-width="16"
+                stroke-dasharray="289 346" stroke-linecap="round"/>
+              <circle cx="70" cy="70" r="55" fill="none" stroke="#f4a62a" stroke-width="16"
+                stroke-dasharray="86 346" stroke-dashoffset="-294" stroke-linecap="round" opacity=".8"/>
+              <circle cx="70" cy="70" r="55" fill="none" stroke="#e05c5c" stroke-width="16"
+                stroke-dasharray="44 346" stroke-dashoffset="-384" stroke-linecap="round" opacity=".7"/>
+            </svg>
+            <div class="donut-center">
+              <span style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--green-dark);line-height:1">1,840</span>
+              <span style="font-size:11px;color:var(--text-muted);font-weight:500">kcal</span>
+            </div>
+          </div>
+          <div style="flex:1">
+            <div style="margin-bottom:20px">
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Còn lại</div>
+              <div style="font-size:22px;font-weight:700;color:var(--green-accent)">360 kcal</div>
+            </div>
+            <div class="macro-row">
+              <div class="macro-dot" style="background:#3a8f67"></div>
+              <div class="macro-label">Carbs</div>
+              <div style="flex:1"><div class="prog-bar"><div class="prog-fill" style="width:72%"></div></div></div>
+              <div class="macro-val2">186 / 260g</div>
+            </div>
+            <div class="macro-row">
+              <div class="macro-dot" style="background:#f4a62a"></div>
+              <div class="macro-label">Protein</div>
+              <div style="flex:1"><div class="prog-bar"><div class="prog-fill orange" style="width:73%"></div></div></div>
+              <div class="macro-val2">92 / 125g</div>
+            </div>
+            <div class="macro-row">
+              <div class="macro-dot" style="background:#e05c5c"></div>
+              <div class="macro-label">Fat</div>
+              <div style="flex:1"><div class="prog-bar"><div class="prog-fill red" style="width:77%"></div></div></div>
+              <div class="macro-val2">54 / 70g</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent meals -->
+      <div class="card fade-up" style="animation-delay:.26s">
+        <div class="card-header">
+          <span class="card-title">Bữa ăn hôm nay</span>
+          <a href="Food Log.html" class="card-action">Thêm bữa →</a>
+        </div>
+        <div class="card-pad" style="padding-top:8px;padding-bottom:8px">
+          <div class="meal-row">
+            <div class="meal-emoji-sm">🥣</div>
+            <div>
+              <div class="meal-name-sm">Yến mạch sữa hạt</div>
+              <div class="meal-meta">Sáng · 07:30</div>
+            </div>
+            <div class="meal-kcal">320 kcal</div>
+          </div>
+          <div class="meal-row">
+            <div class="meal-emoji-sm">🍌</div>
+            <div>
+              <div class="meal-name-sm">Chuối vừa</div>
+              <div class="meal-meta">Sáng · 09:00</div>
+            </div>
+            <div class="meal-kcal">100 kcal</div>
+          </div>
+          <div class="meal-row">
+            <div class="meal-emoji-sm">🍚</div>
+            <div>
+              <div class="meal-name-sm">Cơm gà xào rau</div>
+              <div class="meal-meta">Trưa · 12:15</div>
+            </div>
+            <div class="meal-kcal">480 kcal</div>
+          </div>
+          <div class="meal-row">
+            <div class="meal-emoji-sm">🥤</div>
+            <div>
+              <div class="meal-name-sm">Sinh tố bơ đường</div>
+              <div class="meal-meta">Trưa · 12:45</div>
+            </div>
+            <div class="meal-kcal">200 kcal</div>
+          </div>
+          <div class="meal-row">
+            <div class="meal-emoji-sm">🍊</div>
+            <div>
+              <div class="meal-name-sm">Cam tươi 2 quả</div>
+              <div class="meal-meta">Chiều · 15:30</div>
+            </div>
+            <div class="meal-kcal">120 kcal</div>
+          </div>
+          <div class="meal-row">
+            <div class="meal-emoji-sm">🍜</div>
+            <div>
+              <div class="meal-name-sm">Phở bò tái (nhỏ)</div>
+              <div class="meal-meta">Tối · 18:30</div>
+            </div>
+            <div class="meal-kcal">620 kcal</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW 3: Weekly + Water + Workout + Insights -->
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:20px;margin-bottom:20px">
+      <!-- Weekly bars -->
+      <div class="card fade-up" style="animation-delay:.3s">
+        <div class="card-header">
+          <span class="card-title">Calories 7 ngày qua</span>
+          <a href="Reports.html" class="card-action">Báo cáo đầy đủ →</a>
+        </div>
+        <div class="card-pad" style="padding-top:16px">
+          <div class="week-bars" style="height:100px">
+            <div class="week-bar-wrap">
+              <div style="font-size:10px;color:var(--text-muted);text-align:center">1,920</div>
+              <div class="week-bar-bg" style="flex:1;width:100%">
+                <div class="week-bar-fill" style="height:87%"></div>
+              </div>
+              <div class="week-day">T4</div>
+            </div>
+            <div class="week-bar-wrap">
+              <div style="font-size:10px;color:var(--text-muted);text-align:center">2,100</div>
+              <div class="week-bar-bg" style="flex:1;width:100%">
+                <div class="week-bar-fill" style="height:95%"></div>
+              </div>
+              <div class="week-day">T5</div>
+            </div>
+            <div class="week-bar-wrap">
+              <div style="font-size:10px;color:var(--text-muted);text-align:center">1,650</div>
+              <div class="week-bar-bg" style="flex:1;width:100%">
+                <div class="week-bar-fill" style="height:75%"></div>
+              </div>
+              <div class="week-day">T6</div>
+            </div>
+            <div class="week-bar-wrap">
+              <div style="font-size:10px;color:var(--text-muted);text-align:center">2,350</div>
+              <div class="week-bar-bg" style="flex:1;width:100%">
+                <div class="week-bar-fill orange" style="height:100%"></div>
+              </div>
+              <div class="week-day">T7</div>
+            </div>
+            <div class="week-bar-wrap">
+              <div style="font-size:10px;color:var(--text-muted);text-align:center">2,050</div>
+              <div class="week-bar-bg" style="flex:1;width:100%">
+                <div class="week-bar-fill" style="height:93%"></div>
+              </div>
+              <div class="week-day">CN</div>
+            </div>
+            <div class="week-bar-wrap">
+              <div style="font-size:10px;color:var(--text-muted);text-align:center">1,780</div>
+              <div class="week-bar-bg" style="flex:1;width:100%">
+                <div class="week-bar-fill" style="height:81%"></div>
+              </div>
+              <div class="week-day">T2</div>
+            </div>
+            <div class="week-bar-wrap">
+              <div style="font-size:10px;color:var(--green-cta);text-align:center;font-weight:700">1,840</div>
+              <div class="week-bar-bg" style="flex:1;width:100%">
+                <div class="week-bar-fill today" style="height:84%"></div>
+              </div>
+              <div class="week-day" style="color:var(--green-cta);font-weight:700">T3</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+            <div><div style="font-size:11px;color:var(--text-muted)">TB tuần này</div><div style="font-size:16px;font-weight:700;color:var(--green-dark)">1,956 kcal/ngày</div></div>
+            <div style="text-align:right"><div style="font-size:11px;color:var(--text-muted)">Mục tiêu</div><div style="font-size:16px;font-weight:700;color:var(--text-muted)">2,200 kcal/ngày</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Water -->
+      <div class="card fade-up" style="animation-delay:.33s">
+        <div class="card-header"><span class="card-title">Nước uống</span></div>
+        <div class="card-pad">
+          <div style="text-align:center;margin-bottom:12px">
+            <span style="font-family:'Playfair Display',serif;font-size:32px;font-weight:700;color:var(--green-dark)">6</span>
+            <span style="font-size:13px;color:var(--text-muted)"> / 8 ly</span>
+          </div>
+          <div class="prog-bar" style="height:8px;margin-bottom:16px"><div class="prog-fill blue" style="width:75%"></div></div>
+          <div class="water-cups" id="cups">
+            <div class="cup filled" onclick="toggleCup(this)">💧</div>
+            <div class="cup filled" onclick="toggleCup(this)">💧</div>
+            <div class="cup filled" onclick="toggleCup(this)">💧</div>
+            <div class="cup filled" onclick="toggleCup(this)">💧</div>
+            <div class="cup filled" onclick="toggleCup(this)">💧</div>
+            <div class="cup filled" onclick="toggleCup(this)">💧</div>
+            <div class="cup" onclick="toggleCup(this)">💧</div>
+            <div class="cup" onclick="toggleCup(this)">💧</div>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:12px">Click để cập nhật</div>
+        </div>
+      </div>
+
+      <!-- Today workout -->
+      <div class="card fade-up" style="animation-delay:.36s">
+        <div class="card-header">
+          <span class="card-title">Buổi tập hôm nay</span>
+          <a href="Workout.html" class="card-action">Xem →</a>
+        </div>
+        <div class="card-pad" style="padding-top:8px;padding-bottom:8px">
+          <div class="ex-row">
+            <div class="ex-icon-sm">🏃</div>
+            <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--green-dark)">Chạy bộ</div><div style="font-size:11px;color:var(--text-muted)">5km · 28 phút</div></div>
+            <div class="badge badge-green">Xong</div>
+          </div>
+          <div class="ex-row">
+            <div class="ex-icon-sm">💪</div>
+            <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--green-dark)">Bench Press</div><div style="font-size:11px;color:var(--text-muted)">4×10 reps</div></div>
+            <div class="badge badge-green">Xong</div>
+          </div>
+          <div class="ex-row">
+            <div class="ex-icon-sm">🦵</div>
+            <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--green-dark)">Squat</div><div style="font-size:11px;color:var(--text-muted)">3×12 reps</div></div>
+            <div class="badge badge-orange">Còn lại</div>
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:12px;color:var(--text-muted)">Đã đốt</span>
+            <span style="font-size:15px;font-weight:700;color:var(--green-dark)">540 kcal</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Insights -->
+    <div class="card fade-up" style="animation-delay:.4s">
+      <div class="card-header"><span class="card-title">Gợi ý & Nhận xét từ AI</span><span class="badge badge-dark" style="font-size:10px">AI Pro</span></div>
+      <div class="card-pad" style="display:grid;grid-template-columns:repeat(3,1fr);gap:0">
+        <div class="insight-row" style="padding-right:20px">
+          <div class="insight-icon">💡</div>
+          <div class="insight-text">Bạn đang thiếu <strong>33g protein</strong> so với mục tiêu. Hãy thêm một bữa phụ giàu protein buổi tối.</div>
+        </div>
+        <div class="insight-row" style="padding:0 20px;border-left:1px solid var(--border)">
+          <div class="insight-icon">📈</div>
+          <div class="insight-text">Intake calories tuần này <strong>giảm 5%</strong> so với tuần trước. Tiếp tục duy trì để đạt mục tiêu!</div>
+        </div>
+        <div class="insight-row" style="padding-left:20px;border-left:1px solid var(--border)">
+          <div class="insight-icon">🌙</div>
+          <div class="insight-text">Bạn thường ăn muộn sau 20h. Hãy thử ăn tối trước <strong>19:30</strong> để cải thiện chất lượng giấc ngủ.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleCup(el) {
+  el.classList.toggle('filled');
+  const filled = document.querySelectorAll('.cup.filled').length;
+  const total = document.querySelectorAll('.cup').length;
+  document.querySelector('.prog-fill.blue').style.width = (filled/total*100) + '%';
+}
+</script>
+</body>
+</html>

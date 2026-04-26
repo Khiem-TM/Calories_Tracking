@@ -1,0 +1,63 @@
+.search-bar-big {
+  display: flex; align-items: center; gap: 12px;
+  background: #fff; border: 2px solid var(--border); border-radius: 14px;
+  padding: 12px 18px; transition: border .2s; margin-bottom: 24px;
+}
+.search-bar-big:focus-within { border-color: var(--green-accent); }
+.search-bar-big input {
+  flex: 1; border: none; outline: none; font-size: 16px;
+  font-family: 'DM Sans', sans-serif; color: var(--text-body); background: transparent;
+}
+.search-bar-big input::placeholder { color: var(--text-muted); }
+.filter-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+.filter-tab {
+  padding: 7px 16px; border-radius: 100px; font-size: 13px; font-weight: 600;
+  border: 1.5px solid var(--border); background: #fff; cursor: pointer;
+  color: var(--text-body); transition: all .15s;
+}
+.filter-tab.active { background: var(--green-cta); color: #fff; border-color: var(--green-cta); }
+.filter-tab:hover:not(.active) { border-color: var(--green-accent); color: var(--green-dark); }
+.result-list { display: flex; flex-direction: column; gap: 2px; }
+.result-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px; background: #fff; border-radius: 12px;
+  cursor: pointer; transition: all .15s; border: 1px solid transparent;
+}
+.result-item:hover { border-color: var(--green-accent); box-shadow: 0 2px 12px rgba(30,77,53,0.08); }
+.result-item.selected { border-color: var(--green-accent); background: #f6fff9; }
+.food-avatar { width: 44px; height: 44px; border-radius: 12px; background: var(--green-light); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+.result-info { flex: 1; }
+.result-name { font-size: 14px; font-weight: 700; color: var(--green-dark); }
+.result-brand { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.result-macro { font-size: 12px; color: var(--text-muted); display: flex; gap: 12px; margin-top: 4px; }
+.result-cal { font-size: 15px; font-weight: 700; color: var(--green-dark); text-align: right; }
+.result-cal-unit { font-size: 10px; color: var(--text-muted); }
+.add-btn-sm {
+  width: 32px; height: 32px; border-radius: 50%; background: var(--green-accent);
+  border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 18px; flex-shrink: 0; transition: background .15s;
+}
+.add-btn-sm:hover { background: var(--green-cta); }
+.section-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-muted); margin: 20px 0 10px; }
+
+/* Detail panel */
+.detail-panel {
+  background: #fff; border-radius: var(--radius); box-shadow: var(--shadow-md);
+  border: 1px solid var(--border); padding: 24px; position: sticky; top: 80px;
+}
+.detail-emoji { width: 60px; height: 60px; border-radius: 16px; background: var(--green-light); display: flex; align-items: center; justify-content: center; font-size: 30px; margin-bottom: 16px; }
+.detail-name { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--green-dark); margin-bottom: 4px; }
+.portion-row { display: flex; align-items: center; gap: 10px; margin: 16px 0; }
+.portion-input { width: 70px; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; font-weight: 700; color: var(--green-dark); font-family: 'DM Sans', sans-serif; outline: none; text-align: center; }
+.portion-input:focus { border-color: var(--green-accent); }
+.portion-unit { font-size: 14px; color: var(--text-muted); flex: 1; }
+.nut-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.nut-box { background: var(--bg); border-radius: 10px; padding: 12px; text-align: center; }
+.nut-val { font-size: 18px; font-weight: 700; color: var(--green-dark); }
+.nut-lbl { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.vitamin-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.vitamin-row:last-child { border-bottom: none; }
+.vitamin-name { color: var(--text-muted); }
+.vitamin-val { font-weight: 700; color: var(--green-dark); }
+.meal-select { width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text-body); outline: none; margin-bottom: 12px; background: #fff; }
+.meal-select:focus { border-color: var(--green-accent); }

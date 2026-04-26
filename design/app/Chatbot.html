@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tracker — Trợ lý AI</title>
+<link rel="stylesheet" href="app.css">
+<style>
+  .chat-layout { display:grid; grid-template-columns:280px 1fr; height:calc(100vh - 60px); overflow:hidden; }
+  /* History sidebar */
+  .chat-history { border-right:1px solid var(--border); background:#fff; display:flex; flex-direction:column; overflow:hidden; }
+  .chat-history-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .chat-history-title { font-size:14px; font-weight:700; color:var(--green-dark); }
+  .new-chat-btn { width:28px; height:28px; border-radius:8px; background:var(--green-accent); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#fff; font-size:16px; transition:background .2s; }
+  .new-chat-btn:hover { background:var(--green-cta); }
+  .history-search { padding:10px 16px; border-bottom:1px solid var(--border); }
+  .history-search input { width:100%; padding:7px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; font-family:'DM Sans',sans-serif; outline:none; }
+  .history-search input:focus { border-color:var(--green-accent); }
+  .history-list { flex:1; overflow-y:auto; padding:8px; }
+  .history-section-label { font-size:10px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--text-muted); padding:8px 12px 4px; }
+  .history-item { padding:10px 12px; border-radius:10px; cursor:pointer; transition:background .15s; margin-bottom:2px; }
+  .history-item:hover { background:var(--bg); }
+  .history-item.active { background:var(--green-light); }
+  .history-title { font-size:13px; font-weight:600; color:var(--green-dark); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .history-meta { font-size:11px; color:var(--text-muted); margin-top:2px; display:flex; gap:8px; }
+  /* Chat main */
+  .chat-main { display:flex; flex-direction:column; background:var(--bg); overflow:hidden; }
+  .chat-header { background:#fff; border-bottom:1px solid var(--border); padding:14px 24px; display:flex; align-items:center; gap:12px; }
+  .ai-avatar { width:38px; height:38px; border-radius:12px; background:var(--green-cta); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+  .ai-name { font-size:14px; font-weight:700; color:var(--green-dark); }
+  .ai-status { font-size:11px; color:var(--green-accent); display:flex; align-items:center; gap:5px; }
+  .ai-status::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--green-accent); display:inline-block; }
+  /* Messages */
+  .messages { flex:1; overflow-y:auto; padding:24px; display:flex; flex-direction:column; gap:16px; }
+  .msg { display:flex; gap:12px; max-width:78%; }
+  .msg.user { align-self:flex-end; flex-direction:row-reverse; }
+  .msg-avatar { width:32px; height:32px; border-radius:10px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:16px; }
+  .msg.ai .msg-avatar { background:var(--green-cta); font-size:18px; }
+  .msg.user .msg-avatar { background:var(--green-accent); color:#fff; font-weight:700; font-size:12px; }
+  .msg-bubble { padding:12px 16px; border-radius:16px; font-size:14px; line-height:1.6; }
+  .msg.ai .msg-bubble { background:#fff; color:var(--text-body); border-radius:4px 16px 16px 16px; box-shadow:var(--shadow); }
+  .msg.user .msg-bubble { background:var(--green-cta); color:#fff; border-radius:16px 4px 16px 16px; }
+  .msg-time { font-size:10px; color:var(--text-muted); margin-top:4px; }
+  .msg.user .msg-time { text-align:right; }
+  /* Suggestion chips */
+  .suggestion-chips { display:flex; flex-wrap:wrap; gap:8px; padding:0 24px 16px; }
+  .chip { padding:8px 16px; border-radius:100px; background:#fff; border:1.5px solid var(--border); font-size:13px; font-weight:500; color:var(--text-body); cursor:pointer; transition:all .15s; white-space:nowrap; }
+  .chip:hover { border-color:var(--green-accent); color:var(--green-dark); background:var(--green-light); }
+  /* Input area */
+  .chat-input-area { background:#fff; border-top:1px solid var(--border); padding:16px 24px; }
+  .input-box { display:flex; align-items:flex-end; gap:10px; background:var(--bg); border:2px solid var(--border); border-radius:16px; padding:10px 14px; transition:border .2s; }
+  .input-box:focus-within { border-color:var(--green-accent); }
+  .input-box textarea { flex:1; border:none; background:transparent; font-family:'DM Sans',sans-serif; font-size:14px; color:var(--text-body); outline:none; resize:none; min-height:22px; max-height:120px; line-height:1.5; }
+  .input-box textarea::placeholder { color:var(--text-muted); }
+  .send-btn { width:36px; height:36px; border-radius:10px; background:var(--green-cta); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .2s; flex-shrink:0; }
+  .send-btn:hover { background:var(--green-accent); }
+  .input-actions { display:flex; gap:8px; align-items:center; margin-right:4px; }
+  .input-action-btn { width:30px; height:30px; border-radius:8px; background:none; border:none; cursor:pointer; color:var(--text-muted); display:flex; align-items:center; justify-content:center; transition:color .15s; font-size:16px; }
+  .input-action-btn:hover { color:var(--green-accent); }
+  /* AI card responses */
+  .ai-card { background:var(--bg); border-radius:12px; padding:12px; margin-top:8px; border:1px solid var(--border); }
+  .ai-card-title { font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; }
+  .ai-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .ai-table td { padding:5px 8px; }
+  .ai-table tr:nth-child(even) td { background:rgba(58,143,103,.07); border-radius:4px; }
+  /* Typing indicator */
+  .typing { display:flex; gap:4px; align-items:center; padding:8px 0; }
+  .typing-dot { width:7px; height:7px; border-radius:50%; background:var(--text-muted); animation:bounce .8s ease-in-out infinite; }
+  .typing-dot:nth-child(2) { animation-delay:.15s; }
+  .typing-dot:nth-child(3) { animation-delay:.3s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <a href="../Landing Page.html" class="sidebar-logo">Tracker<span>.</span></a>
+  <div class="sidebar-section">Menu chính</div>
+  <ul class="sidebar-nav">
+    <li><a href="Dashboard.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="1" y="1" width="7" height="7" rx="2" fill="currentColor"/><rect x="10" y="1" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/><rect x="1" y="10" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/><rect x="10" y="10" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/></svg>Dashboard</a></li>
+    <li><a href="Food Log.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><circle cx="9" cy="9" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M6 9h6M9 6v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Nhật ký ăn uống</a></li>
+    <li><a href="Search Food.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M13 13l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Tìm thực phẩm</a></li>
+    <li><a href="Workout.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M2 9h2m10 0h2M4 9a5 5 0 0110 0M4 9a5 5 0 0010 0M6 7v4M12 7v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Tập luyện</a></li>
+    <li><a href="Body Metrics.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M9 2a4 4 0 100 8 4 4 0 000-8zM3 16c0-3 2.7-5 6-5s6 2 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Body Metrics</a></li>
+    <li><a href="Reports.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M3 14l4-5 3 3 4-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Báo cáo</a></li>
+    <li><a href="Chatbot.html" class="active"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M3 5a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H7l-4 3V5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Trợ lý AI</a></li>
+    <li><a href="Blog.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="2" y="3" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 7h8M5 11h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Blog</a></li>
+  </ul>
+  <div class="sidebar-bottom"><a href="Profile.html" style="text-decoration:none"><div class="user-pill"><div class="user-avatar">TM</div><div><div class="user-name">Trần Minh</div><div class="user-plan">Pro Plan</div></div></div></a></div>
+</aside>
+
+<div class="main" style="overflow:hidden">
+  <div class="topbar">
+    <div class="topbar-left"><h1>Trợ lý AI Sức khoẻ</h1><p>Tư vấn dinh dưỡng & tập luyện cá nhân hoá</p></div>
+    <div class="topbar-right">
+      <button class="btn btn-ghost2 btn-sm" onclick="newChat()">+ Cuộc trò chuyện mới</button>
+    </div>
+  </div>
+
+  <div class="chat-layout">
+    <!-- History sidebar -->
+    <div class="chat-history">
+      <div class="chat-history-header">
+        <span class="chat-history-title">Lịch sử</span>
+        <button class="new-chat-btn" onclick="newChat()" title="Cuộc trò chuyện mới">+</button>
+      </div>
+      <div class="history-search">
+        <input type="text" placeholder="Tìm cuộc trò chuyện...">
+      </div>
+      <div class="history-list">
+        <div class="history-section-label">Hôm nay</div>
+        <div class="history-item active">
+          <div class="history-title">Tư vấn protein và chế độ ăn tăng cơ</div>
+          <div class="history-meta"><span>Vừa xong</span><span>4 tin nhắn</span></div>
+        </div>
+        <div class="history-item">
+          <div class="history-title">Calories cho buổi cardio sáng nay</div>
+          <div class="history-meta"><span>2 giờ trước</span><span>6 tin nhắn</span></div>
+        </div>
+        <div class="history-section-label">Hôm qua</div>
+        <div class="history-item">
+          <div class="history-title">Lịch tập tuần tới phù hợp mục tiêu</div>
+          <div class="history-meta"><span>22/04</span><span>12 tin nhắn</span></div>
+        </div>
+        <div class="history-item">
+          <div class="history-title">Phở bò có bao nhiêu calories?</div>
+          <div class="history-meta"><span>22/04</span><span>3 tin nhắn</span></div>
+        </div>
+        <div class="history-section-label">Tuần này</div>
+        <div class="history-item">
+          <div class="history-title">Thực đơn meal prep cuối tuần</div>
+          <div class="history-meta"><span>20/04</span><span>18 tin nhắn</span></div>
+        </div>
+        <div class="history-item">
+          <div class="history-title">Bài tập phục hồi sau chấn thương vai</div>
+          <div class="history-meta"><span>19/04</span><span>9 tin nhắn</span></div>
+        </div>
+        <div class="history-item">
+          <div class="history-title">Giải thích về intermittent fasting</div>
+          <div class="history-meta"><span>18/04</span><span>14 tin nhắn</span></div>
+        </div>
+        <div class="history-section-label">Tháng này</div>
+        <div class="history-item">
+          <div class="history-title">Supplement nào nên dùng khi tập gym?</div>
+          <div class="history-meta"><span>15/04</span><span>22 tin nhắn</span></div>
+        </div>
+        <div class="history-item">
+          <div class="history-title">Phân tích báo cáo dinh dưỡng tuần 2</div>
+          <div class="history-meta"><span>14/04</span><span>8 tin nhắn</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat main -->
+    <div class="chat-main">
+      <div class="chat-header">
+        <div class="ai-avatar">🤖</div>
+        <div>
+          <div class="ai-name">Tracker AI — Chuyên gia Dinh dưỡng & Thể thao</div>
+          <div class="ai-status">Sẵn sàng tư vấn</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn btn-ghost2 btn-sm">Xuất PDF</button>
+          <button class="btn btn-ghost2 btn-sm">Chia sẻ</button>
+        </div>
+      </div>
+
+      <div class="messages" id="messages">
+        <!-- AI greeting -->
+        <div class="msg ai">
+          <div class="msg-avatar">🤖</div>
+          <div>
+            <div class="msg-bubble">
+              Xin chào Minh! Tôi là trợ lý AI của Tracker, được huấn luyện bởi đội ngũ chuyên gia dinh dưỡng và thể thao hàng đầu.<br><br>
+              Tôi có thể giúp bạn:
+              <ul style="margin-top:8px;padding-left:18px;display:flex;flex-direction:column;gap:4px">
+                <li>Tư vấn chế độ ăn uống phù hợp mục tiêu</li>
+                <li>Phân tích báo cáo dinh dưỡng của bạn</li>
+                <li>Gợi ý thực đơn và công thức lành mạnh</li>
+                <li>Lập kế hoạch tập luyện cá nhân hoá</li>
+                <li>Giải đáp mọi câu hỏi về sức khoẻ</li>
+              </ul>
+            </div>
+            <div class="msg-time">09:14</div>
+          </div>
+        </div>
+
+        <!-- User message -->
+        <div class="msg user">
+          <div class="msg-avatar">TM</div>
+          <div>
+            <div class="msg-bubble">Tôi muốn tăng cơ nhưng vẫn muốn duy trì cân nặng hiện tại 68.4kg. Tôi cần bao nhiêu protein mỗi ngày?</div>
+            <div class="msg-time">09:15</div>
+          </div>
+        </div>
+
+        <!-- AI response with data card -->
+        <div class="msg ai">
+          <div class="msg-avatar">🤖</div>
+          <div>
+            <div class="msg-bubble">
+              Dựa trên hồ sơ của bạn (68.4kg, tập 4–5 buổi/tuần), đây là khuyến nghị protein để <strong>body recomposition</strong> — tăng cơ đồng thời duy trì cân nặng:
+              <div class="ai-card">
+                <div class="ai-card-title">Nhu cầu protein hàng ngày</div>
+                <table class="ai-table">
+                  <tr><td>Tối thiểu</td><td style="font-weight:700;color:var(--green-dark)">137g/ngày</td><td style="color:var(--text-muted)">(2.0g × kg)</td></tr>
+                  <tr><td>Tối ưu</td><td style="font-weight:700;color:var(--green-accent)">171g/ngày</td><td style="color:var(--text-muted)">(2.5g × kg)</td></tr>
+                  <tr><td>Tối đa</td><td style="font-weight:700;color:var(--text-muted)">205g/ngày</td><td style="color:var(--text-muted)">(3.0g × kg)</td></tr>
+                </table>
+              </div>
+              <strong>Hiện tại bạn đang nạp ~92g/ngày</strong> — còn thiếu khoảng 79g so với mức tối ưu. Gợi ý bổ sung:
+              <ul style="margin-top:8px;padding-left:18px;display:flex;flex-direction:column;gap:3px">
+                <li>Thêm 200g ức gà vào bữa trưa (+48g protein)</li>
+                <li>1 ly sữa whey sau tập (+24g protein)</li>
+                <li>2 quả trứng vào bữa sáng (+14g protein)</li>
+              </ul>
+            </div>
+            <div class="msg-time">09:15</div>
+          </div>
+        </div>
+
+        <!-- User -->
+        <div class="msg user">
+          <div class="msg-avatar">TM</div>
+          <div>
+            <div class="msg-bubble">Nếu tôi không dùng whey protein, tôi có thể lấy protein từ thực phẩm tự nhiên không? Gợi ý cho tôi thực đơn 1 ngày.</div>
+            <div class="msg-time">09:17</div>
+          </div>
+        </div>
+
+        <!-- AI with meal plan card -->
+        <div class="msg ai">
+          <div class="msg-avatar">🤖</div>
+          <div>
+            <div class="msg-bubble">
+              Hoàn toàn được! Đây là thực đơn 1 ngày ~2,200 kcal với 165g protein từ thực phẩm tự nhiên, phù hợp khẩu vị Việt Nam:
+              <div class="ai-card">
+                <div class="ai-card-title">Thực đơn tăng cơ — 23/04</div>
+                <table class="ai-table" style="width:100%">
+                  <tr style="font-weight:700;color:var(--text-muted)"><td>Bữa</td><td>Món ăn</td><td>Protein</td><td>Kcal</td></tr>
+                  <tr><td>🌅 Sáng</td><td>4 lòng trắng trứng + yến mạch</td><td style="color:var(--green-accent);font-weight:700">38g</td><td>380</td></tr>
+                  <tr><td>☀️ Trưa</td><td>200g ức gà + cơm gạo lứt + rau</td><td style="color:var(--green-accent);font-weight:700">52g</td><td>620</td></tr>
+                  <tr><td>🍊 Phụ</td><td>200g cá hồi áp chảo + salad</td><td style="color:var(--green-accent);font-weight:700">40g</td><td>380</td></tr>
+                  <tr><td>🌙 Tối</td><td>Đậu hũ xào rau + cơm trắng</td><td style="color:var(--green-accent);font-weight:700">28g</td><td>480</td></tr>
+                  <tr style="font-weight:700;border-top:1px solid var(--border)"><td colspan="2">Tổng</td><td style="color:var(--green-cta)">158g</td><td>1,860</td></tr>
+                </table>
+              </div>
+              Muốn tôi thêm bữa phụ để đủ 165g không? Hoặc tôi có thể <strong>tự động thêm thực đơn này vào nhật ký hôm nay</strong> cho bạn!
+            </div>
+            <div class="msg-time">09:18</div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button class="chip" onclick="addMealPlan()">✓ Thêm vào nhật ký</button>
+              <button class="chip" onclick="askMore('Thêm bữa phụ cho đủ 165g protein')">+ Thêm bữa phụ</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Suggestion chips -->
+      <div class="suggestion-chips" id="suggestions">
+        <div class="chip" onclick="sendSuggestion(this)">Phân tích báo cáo tuần này</div>
+        <div class="chip" onclick="sendSuggestion(this)">Lịch tập tuần tới cho tôi</div>
+        <div class="chip" onclick="sendSuggestion(this)">Công thức bữa sáng giàu protein</div>
+        <div class="chip" onclick="sendSuggestion(this)">Tôi có nên dùng creatine?</div>
+        <div class="chip" onclick="sendSuggestion(this)">Giải thích chỉ số BMI của tôi</div>
+      </div>
+
+      <!-- Input -->
+      <div class="chat-input-area">
+        <div class="input-box">
+          <div class="input-actions">
+            <button class="input-action-btn" title="Đính kèm file">📎</button>
+            <button class="input-action-btn" title="Gửi ảnh bữa ăn">📷</button>
+          </div>
+          <textarea id="chat-input" placeholder="Hỏi về dinh dưỡng, tập luyện, sức khoẻ..." rows="1"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"
+            oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+          <button class="send-btn" onclick="sendMessage()">
+            <svg width="16" height="16" fill="none" viewBox="0 0 16 16"><path d="M2 8l12-6-6 12-2-4-4-2z" fill="white"/></svg>
+          </button>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:center">Tracker AI có thể mắc lỗi. Tham khảo chuyên gia y tế cho quyết định quan trọng.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;bottom:24px;left:calc(220px + 50%);transform:translateX(-50%) translateY(60px);background:var(--green-dark);color:#fff;padding:12px 24px;border-radius:100px;font-size:14px;font-weight:600;transition:all .3s;z-index:9999;opacity:0"></div>
+
+<script>
+const responses = [
+  "Tôi đang phân tích dữ liệu sức khoẻ của bạn... Dựa trên lịch sử dinh dưỡng và tập luyện, tôi nhận thấy bạn đang tiến triển rất tốt! Cân nặng giảm đều và mức protein đang được cải thiện.",
+  "Đây là một câu hỏi hay! Theo nghiên cứu khoa học mới nhất, để đạt hiệu quả tối ưu với mục tiêu của bạn, tôi khuyến nghị điều chỉnh tỷ lệ macro theo hướng tăng protein và giảm nhẹ carbs vào buổi tối.",
+  "Dựa trên profile của bạn, tôi thấy bạn đang thiếu một số vi chất quan trọng như Canxi (62% mục tiêu) và Chất xơ (60%). Hãy thêm rau xanh đậm và các loại đậu vào bữa ăn hàng ngày.",
+  "Tuyệt vời! Tôi đã lưu thông tin này. Bạn có muốn tôi tự động tạo kế hoạch bữa ăn cho tuần tới dựa trên mục tiêu dinh dưỡng không? Tôi có thể điều chỉnh theo khẩu vị và ngân sách của bạn."
+];
+let msgCount = 0;
+
+function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  addUserMsg(text);
+  input.value = ''; input.style.height = 'auto';
+  showTyping();
+  setTimeout(() => {
+    removeTyping();
+    addAIMsg(responses[msgCount % responses.length]);
+    msgCount++;
+  }, 1200 + Math.random()*800);
+}
+
+function sendSuggestion(el) {
+  addUserMsg(el.textContent);
+  showTyping();
+  setTimeout(() => {
+    removeTyping();
+    addAIMsg(responses[msgCount % responses.length]);
+    msgCount++;
+  }, 1400);
+}
+
+function askMore(text) { document.getElementById('chat-input').value = text; document.getElementById('chat-input').focus(); }
+
+function addUserMsg(text) {
+  const msgs = document.getElementById('messages');
+  const now = new Date(); const time = now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+  msgs.innerHTML += `<div class="msg user"><div class="msg-avatar">TM</div><div><div class="msg-bubble">${text}</div><div class="msg-time">${time}</div></div></div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function addAIMsg(text) {
+  const msgs = document.getElementById('messages');
+  const now = new Date(); const time = now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+  msgs.innerHTML += `<div class="msg ai"><div class="msg-avatar">🤖</div><div><div class="msg-bubble">${text}</div><div class="msg-time">${time}</div></div></div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function showTyping() {
+  const msgs = document.getElementById('messages');
+  msgs.innerHTML += `<div class="msg ai" id="typing-indicator"><div class="msg-avatar">🤖</div><div><div class="msg-bubble"><div class="typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div></div></div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typing-indicator');
+  if(t) t.remove();
+}
+
+function addMealPlan() {
+  showToast('✓ Đã thêm thực đơn vào nhật ký hôm nay');
+}
+
+function newChat() {
+  document.getElementById('messages').innerHTML = `<div class="msg ai"><div class="msg-avatar">🤖</div><div><div class="msg-bubble">Cuộc trò chuyện mới bắt đầu! Tôi có thể giúp gì cho bạn hôm nay, Minh?</div><div class="msg-time">${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2,'0')}</div></div></div>`;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)';
+  setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(60px)'; }, 2500);
+}
+</script>
+</body>
+</html>

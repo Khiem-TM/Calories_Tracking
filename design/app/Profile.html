@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tracker — Hồ sơ cá nhân</title>
+<link rel="stylesheet" href="app.css">
+<style>
+  .profile-hero { background: var(--green-cta); border-radius: var(--radius); padding: 32px; color: #fff; display: flex; align-items: center; gap: 28px; margin-bottom: 20px; position: relative; overflow: hidden; }
+  .profile-hero::before { content: ''; position: absolute; right: -60px; top: -60px; width: 260px; height: 260px; border-radius: 50%; background: rgba(255,255,255,0.05); }
+  .profile-hero::after { content: ''; position: absolute; right: 40px; bottom: -80px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255,255,255,0.04); }
+  .avatar-big { width: 88px; height: 88px; border-radius: 50%; background: var(--green-accent); display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 700; color: #fff; flex-shrink: 0; border: 4px solid rgba(255,255,255,0.2); position: relative; z-index: 1; }
+  .avatar-edit { position: absolute; bottom: 0; right: 0; width: 26px; height: 26px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; }
+  .profile-info { flex: 1; position: relative; z-index: 1; }
+  .profile-name { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; }
+  .profile-handle { font-size: 13px; opacity: .65; margin-top: 2px; }
+  .profile-badges { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .profile-badge { background: rgba(255,255,255,0.12); border-radius: 100px; padding: 4px 12px; font-size: 12px; font-weight: 600; }
+  .profile-stats { display: flex; gap: 32px; position: relative; z-index: 1; }
+  .ps-item { text-align: center; }
+  .ps-val { font-size: 22px; font-weight: 700; font-family: 'Playfair Display', serif; }
+  .ps-lbl { font-size: 11px; opacity: .65; margin-top: 2px; }
+  /* Tabs */
+  .profile-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 24px; }
+  .ptab { padding: 12px 20px; font-size: 14px; font-weight: 600; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .2s; }
+  .ptab.active { color: var(--green-dark); border-bottom-color: var(--green-accent); }
+  .ptab:hover { color: var(--green-dark); }
+  /* Form fields */
+  .field-group { margin-bottom: 20px; }
+  .field-label { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  select.input { cursor: pointer; }
+  /* Goals */
+  .goal-card { background: #fff; border-radius: 14px; border: 1.5px solid var(--border); padding: 18px; cursor: pointer; transition: all .15s; }
+  .goal-card:hover { border-color: var(--green-accent); }
+  .goal-card.selected { border-color: var(--green-accent); background: #f6fff9; }
+  .goal-icon { font-size: 28px; margin-bottom: 8px; }
+  .goal-name { font-size: 14px; font-weight: 700; color: var(--green-dark); }
+  .goal-desc { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+  /* Connections */
+  .conn-row { display: flex; align-items: center; gap: 14px; padding: 14px; background: #fff; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 10px; }
+  .conn-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .conn-name { font-size: 14px; font-weight: 700; color: var(--green-dark); }
+  .conn-status { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .toggle { position: relative; width: 44px; height: 24px; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 100px; cursor: pointer; transition: .2s; }
+  .toggle-slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+  .toggle input:checked + .toggle-slider { background: var(--green-accent); }
+  .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+  /* Notif settings */
+  .notif-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .notif-row:last-child { border-bottom: none; }
+  .notif-text .notif-title { font-size: 14px; font-weight: 600; color: var(--green-dark); }
+  .notif-text .notif-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <a href="../Landing Page.html" class="sidebar-logo">Tracker<span>.</span></a>
+  <div class="sidebar-section">Menu chính</div>
+  <ul class="sidebar-nav">
+    <li><a href="Dashboard.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="1" y="1" width="7" height="7" rx="2" fill="currentColor"/><rect x="10" y="1" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/><rect x="1" y="10" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/><rect x="10" y="10" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/></svg>Dashboard</a></li>
+    <li><a href="Food Log.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><circle cx="9" cy="9" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M6 9h6M9 6v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Nhật ký ăn uống</a></li>
+    <li><a href="Search Food.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M13 13l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Tìm thực phẩm</a></li>
+    <li><a href="Workout.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M2 9h2m10 0h2M4 9a5 5 0 0110 0M4 9a5 5 0 0010 0M6 7v4M12 7v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Tập luyện</a></li>
+    <li><a href="Body Metrics.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M9 2a4 4 0 100 8 4 4 0 000-8zM3 16c0-3 2.7-5 6-5s6 2 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Body Metrics</a></li>
+    <li><a href="Reports.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M3 14l4-5 3 3 4-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Báo cáo</a></li>
+    <li><a href="Chatbot.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M3 5a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H7l-4 3V5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Trợ lý AI</a></li>
+    <li><a href="Blog.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="2" y="3" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 7h8M5 11h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Blog</a></li>
+  </ul>
+  <div class="sidebar-bottom"><a href="Profile.html" style="text-decoration:none"><div class="user-pill" style="background:rgba(255,255,255,0.13)"><div class="user-avatar">TM</div><div><div class="user-name">Trần Minh</div><div class="user-plan">Pro Plan</div></div></div></a></div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left"><h1>Hồ sơ cá nhân</h1><p>Quản lý thông tin và cài đặt của bạn</p></div>
+    <div class="topbar-right">
+      <button class="btn btn-primary btn-sm" onclick="saveProfile()">Lưu thay đổi</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- Profile hero -->
+    <div class="profile-hero fade-up">
+      <div style="position:relative">
+        <div class="avatar-big">TM</div>
+        <div class="avatar-edit">✏️</div>
+      </div>
+      <div class="profile-info">
+        <div class="profile-name">Trần Minh</div>
+        <div class="profile-handle">@tranminh · tranminh@gmail.com</div>
+        <div class="profile-badges">
+          <div class="profile-badge">Pro Plan</div>
+          <div class="profile-badge">Streak 7 ngày</div>
+          <div class="profile-badge">Thành viên từ 01/2026</div>
+        </div>
+      </div>
+      <div class="profile-stats">
+        <div class="ps-item"><div class="ps-val">18</div><div class="ps-lbl">Buổi tập</div></div>
+        <div class="ps-item"><div class="ps-val">7</div><div class="ps-lbl">Streak ngày</div></div>
+        <div class="ps-item"><div class="ps-val">−1.6kg</div><div class="ps-lbl">Tiến trình</div></div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="profile-tabs fade-up" style="animation-delay:.06s">
+      <div class="ptab active" onclick="showTab('info',this)">Thông tin cơ bản</div>
+      <div class="ptab" onclick="showTab('goals',this)">Mục tiêu</div>
+      <div class="ptab" onclick="showTab('connect',this)">Kết nối thiết bị</div>
+      <div class="ptab" onclick="showTab('notif',this)">Thông báo</div>
+      <div class="ptab" onclick="showTab('plan',this)">Gói đăng ký</div>
+    </div>
+
+    <!-- Tab: Thông tin cơ bản -->
+    <div id="tab-info" class="fade-up" style="animation-delay:.1s">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+        <div>
+          <div class="card card-pad">
+            <div style="font-size:14px;font-weight:700;color:var(--green-dark);margin-bottom:20px">Thông tin cá nhân</div>
+            <div class="field-group">
+              <div class="field-row">
+                <div><div class="field-label">Họ</div><input class="input" value="Trần"></div>
+                <div><div class="field-label">Tên</div><input class="input" value="Minh"></div>
+              </div>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Email</div>
+              <input class="input" value="tranminh@gmail.com" type="email">
+            </div>
+            <div class="field-group">
+              <div class="field-label">Số điện thoại</div>
+              <input class="input" value="0901 234 567">
+            </div>
+            <div class="field-group">
+              <div class="field-row">
+                <div><div class="field-label">Ngày sinh</div><input class="input" value="15/08/1995" type="text"></div>
+                <div><div class="field-label">Giới tính</div>
+                  <select class="input"><option selected>Nam</option><option>Nữ</option><option>Khác</option></select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="card card-pad">
+            <div style="font-size:14px;font-weight:700;color:var(--green-dark);margin-bottom:20px">Thể trạng</div>
+            <div class="field-group">
+              <div class="field-row">
+                <div><div class="field-label">Chiều cao</div>
+                  <div style="position:relative"><input class="input" value="175" style="padding-right:36px"><span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text-muted)">cm</span></div>
+                </div>
+                <div><div class="field-label">Cân nặng hiện tại</div>
+                  <div style="position:relative"><input class="input" value="68.4" style="padding-right:36px"><span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text-muted)">kg</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Mức độ hoạt động</div>
+              <select class="input">
+                <option>Ít vận động (văn phòng)</option>
+                <option selected>Vận động vừa (tập 3–5 ngày/tuần)</option>
+                <option>Vận động nhiều (tập 6–7 ngày/tuần)</option>
+                <option>Vận động rất nhiều (vận động viên)</option>
+              </select>
+            </div>
+            <div style="background:var(--bg);border-radius:12px;padding:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center">
+              <div><div style="font-size:18px;font-weight:700;color:var(--green-dark);font-family:'Playfair Display',serif">22.3</div><div style="font-size:11px;color:var(--text-muted)">BMI</div><div class="badge badge-green" style="margin-top:4px;font-size:10px">Bình thường</div></div>
+              <div><div style="font-size:18px;font-weight:700;color:var(--green-dark);font-family:'Playfair Display',serif">2,200</div><div style="font-size:11px;color:var(--text-muted)">TDEE (kcal)</div></div>
+              <div><div style="font-size:18px;font-weight:700;color:var(--green-dark);font-family:'Playfair Display',serif">1,730</div><div style="font-size:11px;color:var(--text-muted)">BMR (kcal)</div></div>
+            </div>
+          </div>
+
+          <div class="card card-pad">
+            <div style="font-size:14px;font-weight:700;color:var(--green-dark);margin-bottom:16px">Các dị ứng & hạn chế</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <div class="badge badge-red" style="cursor:pointer">Hải sản ✕</div>
+              <div class="badge badge-orange" style="cursor:pointer">Sữa bò ✕</div>
+              <div class="badge" style="background:var(--bg);color:var(--text-muted);cursor:pointer;border:1.5px dashed var(--border)">+ Thêm</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Mục tiêu -->
+    <div id="tab-goals" style="display:none">
+      <div class="card card-pad" style="margin-bottom:20px">
+        <div style="font-size:14px;font-weight:700;color:var(--green-dark);margin-bottom:16px">Mục tiêu chính</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+          <div class="goal-card" onclick="selectGoal(this)">
+            <div class="goal-icon">📉</div>
+            <div class="goal-name">Giảm cân</div>
+            <div class="goal-desc">Giảm mỡ, cải thiện vóc dáng</div>
+          </div>
+          <div class="goal-card selected" onclick="selectGoal(this)">
+            <div class="goal-icon">💪</div>
+            <div class="goal-name">Tăng cơ</div>
+            <div class="goal-desc">Xây dựng cơ bắp, tăng sức mạnh</div>
+          </div>
+          <div class="goal-card" onclick="selectGoal(this)">
+            <div class="goal-icon">⚖️</div>
+            <div class="goal-name">Duy trì cân nặng</div>
+            <div class="goal-desc">Giữ cân nặng hiện tại ổn định</div>
+          </div>
+          <div class="goal-card" onclick="selectGoal(this)">
+            <div class="goal-icon">❤️</div>
+            <div class="goal-name">Sức khoẻ chung</div>
+            <div class="goal-desc">Ăn uống lành mạnh, sống khoẻ</div>
+          </div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card card-pad">
+          <div style="font-size:14px;font-weight:700;color:var(--green-dark);margin-bottom:16px">Mục tiêu cân nặng</div>
+          <div class="field-group">
+            <div class="field-row">
+              <div><div class="field-label">Cân nặng hiện tại</div><div style="position:relative"><input class="input" value="68.4" style="padding-right:36px"><span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text-muted)">kg</span></div></div>
+              <div><div class="field-label">Cân nặng mục tiêu</div><div style="position:relative"><input class="input" value="65" style="padding-right:36px"><span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text-muted)">kg</span></div></div>
+            </div>
+          </div>
+          <div class="field-group">
+            <div class="field-label">Tốc độ giảm cân</div>
+            <select class="input">
+              <option>Nhẹ (−0.25kg/tuần)</option>
+              <option selected>Vừa (−0.5kg/tuần)</option>
+              <option>Nhanh (−1kg/tuần)</option>
+            </select>
+          </div>
+          <div style="background:var(--green-light);border-radius:12px;padding:14px;font-size:13px;color:var(--green-mid)">
+            Ước tính đạt mục tiêu: <strong>khoảng 6–7 tuần nữa</strong>
+          </div>
+        </div>
+        <div class="card card-pad">
+          <div style="font-size:14px;font-weight:700;color:var(--green-dark);margin-bottom:16px">Mục tiêu dinh dưỡng tùy chỉnh</div>
+          <div class="field-group">
+            <div class="field-label">Calories mục tiêu / ngày</div>
+            <div style="position:relative"><input class="input" value="2200" style="padding-right:56px"><span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text-muted)">kcal</span></div>
+          </div>
+          <div class="field-group">
+            <div class="field-row3">
+              <div><div class="field-label">Carbs %</div><input class="input" value="50"></div>
+              <div><div class="field-label">Protein %</div><input class="input" value="30"></div>
+              <div><div class="field-label">Fat %</div><input class="input" value="20"></div>
+            </div>
+          </div>
+          <div class="field-group">
+            <div class="field-label">Nước uống mục tiêu</div>
+            <div style="position:relative"><input class="input" value="8" style="padding-right:36px"><span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text-muted)">ly</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Connect -->
+    <div id="tab-connect" style="display:none">
+      <div class="card card-pad" style="max-width:640px">
+        <div style="font-size:14px;font-weight:700;color:var(--green-dark);margin-bottom:16px">Kết nối thiết bị & Ứng dụng</div>
+        <div class="conn-row">
+          <div class="conn-icon" style="background:#000;color:#fff">🍎</div>
+          <div><div class="conn-name">Apple Health</div><div class="conn-status">Đã kết nối · Đồng bộ: bước chân, cân nặng, giấc ngủ</div></div>
+          <label class="toggle" style="margin-left:auto"><input type="checkbox" checked><div class="toggle-slider"></div></label>
+        </div>
+        <div class="conn-row">
+          <div class="conn-icon" style="background:#4285f4;color:#fff">G</div>
+          <div><div class="conn-name">Google Fit</div><div class="conn-status">Chưa kết nối</div></div>
+          <button class="btn btn-ghost2 btn-sm" style="margin-left:auto">Kết nối</button>
+        </div>
+        <div class="conn-row">
+          <div class="conn-icon" style="background:#00b0b9;color:#fff">G</div>
+          <div><div class="conn-name">Garmin Connect</div><div class="conn-status">Đã kết nối · Nhịp tim, GPS workout</div></div>
+          <label class="toggle" style="margin-left:auto"><input type="checkbox" checked><div class="toggle-slider"></div></label>
+        </div>
+        <div class="conn-row">
+          <div class="conn-icon" style="background:#fb8c00;color:#fff">M</div>
+          <div><div class="conn-name">MyFitnessPal Import</div><div class="conn-status">Nhập dữ liệu lịch sử</div></div>
+          <button class="btn btn-ghost2 btn-sm" style="margin-left:auto">Nhập</button>
+        </div>
+        <div class="conn-row">
+          <div class="conn-icon" style="background:#1877f2;color:#fff">S</div>
+          <div><div class="conn-name">Samsung Health</div><div class="conn-status">Chưa kết nối</div></div>
+          <button class="btn btn-ghost2 btn-sm" style="margin-left:auto">Kết nối</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Notifications -->
+    <div id="tab-notif" style="display:none">
+      <div class="card card-pad" style="max-width:560px">
+        <div style="font-size:14px;font-weight:700;color:var(--green-dark);margin-bottom:4px">Cài đặt thông báo</div>
+        <div class="notif-row">
+          <div class="notif-text"><div class="notif-title">Nhắc nhở bữa ăn</div><div class="notif-desc">Nhắc bạn ghi nhật ký vào giờ ăn</div></div>
+          <label class="toggle"><input type="checkbox" checked><div class="toggle-slider"></div></label>
+        </div>
+        <div class="notif-row">
+          <div class="notif-text"><div class="notif-title">Nhắc uống nước</div><div class="notif-desc">Mỗi 2 tiếng từ 8:00 – 20:00</div></div>
+          <label class="toggle"><input type="checkbox" checked><div class="toggle-slider"></div></label>
+        </div>
+        <div class="notif-row">
+          <div class="notif-text"><div class="notif-title">Nhắc tập luyện</div><div class="notif-desc">Theo lịch tập đã đặt</div></div>
+          <label class="toggle"><input type="checkbox" checked><div class="toggle-slider"></div></label>
+        </div>
+        <div class="notif-row">
+          <div class="notif-text"><div class="notif-title">Tổng kết hàng tuần</div><div class="notif-desc">Báo cáo mỗi Chủ Nhật 9:00</div></div>
+          <label class="toggle"><input type="checkbox" checked><div class="toggle-slider"></div></label>
+        </div>
+        <div class="notif-row">
+          <div class="notif-text"><div class="notif-title">Thành tích mới</div><div class="notif-desc">Khi đạt milestone hoặc streak</div></div>
+          <label class="toggle"><input type="checkbox"><div class="toggle-slider"></div></label>
+        </div>
+        <div class="notif-row">
+          <div class="notif-text"><div class="notif-title">Tin tức & Blog</div><div class="notif-desc">Bài viết mới từ chuyên gia dinh dưỡng</div></div>
+          <label class="toggle"><input type="checkbox"><div class="toggle-slider"></div></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Plan -->
+    <div id="tab-plan" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:700px">
+        <div class="card card-pad" style="border:2px solid var(--green-accent)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <div style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Gói Pro</div>
+            <div class="badge badge-green">Gói hiện tại</div>
+          </div>
+          <div style="font-family:'Playfair Display',serif;font-size:32px;font-weight:700;color:var(--green-dark)">199k<span style="font-family:'DM Sans',sans-serif;font-size:13px;font-weight:400;color:var(--text-muted)">/tháng</span></div>
+          <div style="font-size:12px;color:var(--text-muted);margin:8px 0 16px">Gia hạn: 23/05/2026</div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--text-body)">
+            <div style="display:flex;gap:8px;align-items:center"><span style="color:var(--green-accent)">✓</span> Theo dõi vi chất đầy đủ</div>
+            <div style="display:flex;gap:8px;align-items:center"><span style="color:var(--green-accent)">✓</span> AI nhận diện thực phẩm</div>
+            <div style="display:flex;gap:8px;align-items:center"><span style="color:var(--green-accent)">✓</span> Kết nối chuyên gia dinh dưỡng</div>
+            <div style="display:flex;gap:8px;align-items:center"><span style="color:var(--green-accent)">✓</span> Báo cáo không giới hạn</div>
+          </div>
+          <button class="btn btn-ghost2" style="width:100%;justify-content:center;margin-top:16px">Quản lý thanh toán</button>
+        </div>
+        <div class="card card-pad" style="background:var(--green-cta);border:none">
+          <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Nâng cấp Premium</div>
+          <div style="font-family:'Playfair Display',serif;font-size:32px;font-weight:700;color:#fff">499k<span style="font-family:'DM Sans',sans-serif;font-size:13px;font-weight:400;color:rgba(255,255,255,.6)">/tháng</span></div>
+          <div style="font-size:12px;color:rgba(255,255,255,.5);margin:8px 0 16px">Hoặc 3,999k/năm (tiết kiệm 33%)</div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:rgba(255,255,255,.85)">
+            <div style="display:flex;gap:8px;align-items:center"><span>✓</span> Tất cả tính năng Pro</div>
+            <div style="display:flex;gap:8px;align-items:center"><span>✓</span> 1-1 với chuyên gia dinh dưỡng</div>
+            <div style="display:flex;gap:8px;align-items:center"><span>✓</span> Lập kế hoạch meal prep AI</div>
+            <div style="display:flex;gap:8px;align-items:center"><span>✓</span> Phân tích gene & thể trạng</div>
+          </div>
+          <button class="btn btn-white" style="width:100%;justify-content:center;margin-top:16px;background:#fff;color:var(--green-cta);border:none;font-weight:700">Nâng cấp ngay</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="save-toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--green-dark);color:#fff;padding:12px 24px;border-radius:100px;font-size:14px;font-weight:600;transition:transform .3s;z-index:999;opacity:0">✓ Đã lưu thay đổi</div>
+
+<script>
+function showTab(tab, el) {
+  document.querySelectorAll('[id^="tab-"]').forEach(t => t.style.display = 'none');
+  document.getElementById('tab-' + tab).style.display = 'block';
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+function selectGoal(el) {
+  document.querySelectorAll('.goal-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function saveProfile() {
+  const t = document.getElementById('save-toast');
+  t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)';
+  setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(60px)'; }, 2200);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tracker — Body Metrics</title>
+<link rel="stylesheet" href="app.css">
+<style>
+  .metrics-tabs { display:flex; gap:4px; background:var(--bg); border-radius:12px; padding:4px; width:fit-content; margin-bottom:24px; }
+  .metrics-tab { padding:7px 20px; border-radius:9px; font-size:13px; font-weight:600; cursor:pointer; color:var(--text-muted); transition:all .2s; border:none; background:none; font-family:'DM Sans',sans-serif; }
+  .metrics-tab.active { background:#fff; color:var(--green-dark); box-shadow:0 1px 6px rgba(30,77,53,.1); }
+  /* Timeline */
+  .timeline { position:relative; padding-left:28px; }
+  .timeline::before { content:''; position:absolute; left:10px; top:0; bottom:0; width:2px; background:var(--border); }
+  .timeline-entry { position:relative; margin-bottom:24px; }
+  .timeline-dot { position:absolute; left:-24px; top:16px; width:14px; height:14px; border-radius:50%; background:var(--green-accent); border:3px solid #fff; box-shadow:0 0 0 2px var(--green-accent); }
+  .timeline-dot.today { background:var(--green-cta); box-shadow:0 0 0 2px var(--green-cta); }
+  .entry-card { background:#fff; border-radius:14px; border:1.5px solid var(--border); overflow:hidden; transition:box-shadow .2s; }
+  .entry-card:hover { box-shadow:var(--shadow-md); }
+  .entry-header { display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:1px solid var(--border); }
+  .entry-date { font-size:13px; font-weight:700; color:var(--green-dark); }
+  .entry-delta { font-size:12px; font-weight:600; }
+  .entry-body { padding:14px 18px; display:grid; grid-template-columns:repeat(5,1fr) 120px; gap:12px; align-items:center; }
+  .metric-chip { text-align:center; }
+  .metric-val { font-size:17px; font-weight:700; color:var(--green-dark); font-family:'Playfair Display',serif; }
+  .metric-lbl { font-size:10px; color:var(--text-muted); margin-top:2px; font-weight:500; }
+  .metric-change { font-size:10px; font-weight:700; margin-top:2px; }
+  .metric-change.up { color:#e05c5c; }
+  .metric-change.down { color:var(--green-accent); }
+  .photo-thumb { width:100px; height:80px; border-radius:10px; object-fit:cover; cursor:pointer; transition:transform .2s; display:flex; align-items:center; justify-content:center; font-size:28px; background:var(--green-light); }
+  .photo-thumb:hover { transform:scale(1.05); }
+  /* Input form card */
+  .input-section { background:#fff; border-radius:var(--radius); border:1.5px solid var(--green-accent); padding:24px; margin-bottom:24px; }
+  .measurements-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .m-field label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); display:block; margin-bottom:5px; }
+  .m-input-wrap { position:relative; }
+  .m-input-wrap input { width:100%; padding:9px 38px 9px 12px; border:1.5px solid var(--border); border-radius:10px; font-size:14px; font-weight:600; color:var(--green-dark); font-family:'DM Sans',sans-serif; outline:none; }
+  .m-input-wrap input:focus { border-color:var(--green-accent); }
+  .m-unit { position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:11px; color:var(--text-muted); font-weight:600; }
+  /* Photo upload */
+  .photo-upload-zone { border:2px dashed var(--border); border-radius:14px; padding:28px; text-align:center; cursor:pointer; transition:all .2s; background:var(--bg); }
+  .photo-upload-zone:hover { border-color:var(--green-accent); background:var(--green-light); }
+  .photo-preview-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .photo-slot { aspect-ratio:3/4; border-radius:12px; overflow:hidden; position:relative; border:1.5px solid var(--border); background:var(--bg); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:6px; cursor:pointer; transition:all .2s; }
+  .photo-slot:hover { border-color:var(--green-accent); }
+  .photo-slot .slot-label { font-size:11px; color:var(--text-muted); font-weight:600; }
+  .photo-slot.filled { border-color:var(--green-accent); }
+  .photo-slot.filled .slot-emoji { font-size:40px; }
+  /* Progress chart mini */
+  .mini-chart { display:flex; align-items:flex-end; gap:4px; height:48px; }
+  .mini-bar { flex:1; border-radius:4px 4px 0 0; background:var(--green-accent); opacity:.7; min-width:6px; transition:opacity .2s; }
+  .mini-bar:hover { opacity:1; }
+  .mini-bar.highlighted { background:var(--green-cta); opacity:1; }
+  /* BMI gauge */
+  .bmi-bar { height:12px; border-radius:100px; background:linear-gradient(to right,#4a90e2 0%,#3a8f67 25%,#f4a62a 60%,#e05c5c 85%,#c0392b 100%); position:relative; margin:10px 0 4px; }
+  .bmi-needle { position:absolute; top:-4px; width:4px; height:20px; background:var(--green-dark); border-radius:2px; transform:translateX(-50%); }
+  /* Condition selector */
+  .condition-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .cond-btn { padding:10px 6px; border-radius:10px; border:1.5px solid var(--border); background:#fff; cursor:pointer; text-align:center; font-size:12px; font-weight:600; color:var(--text-body); transition:all .15s; }
+  .cond-btn:hover { border-color:var(--green-accent); }
+  .cond-btn.selected { border-color:var(--green-accent); background:var(--green-light); color:var(--green-dark); }
+  .cond-icon { font-size:20px; display:block; margin-bottom:4px; }
+  /* Photo lightbox */
+  .lightbox { position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:1000; display:none; align-items:center; justify-content:center; }
+  .lightbox.open { display:flex; }
+  .lightbox-inner { background:#fff; border-radius:20px; padding:28px; max-width:480px; width:90%; text-align:center; }
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <a href="../Landing Page.html" class="sidebar-logo">Tracker<span>.</span></a>
+  <div class="sidebar-section">Menu chính</div>
+  <ul class="sidebar-nav">
+    <li><a href="Dashboard.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="1" y="1" width="7" height="7" rx="2" fill="currentColor"/><rect x="10" y="1" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/><rect x="1" y="10" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/><rect x="10" y="10" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/></svg>Dashboard</a></li>
+    <li><a href="Food Log.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><circle cx="9" cy="9" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M6 9h6M9 6v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Nhật ký ăn uống</a></li>
+    <li><a href="Search Food.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M13 13l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Tìm thực phẩm</a></li>
+    <li><a href="Workout.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M2 9h2m10 0h2M4 9a5 5 0 0110 0M4 9a5 5 0 0010 0M6 7v4M12 7v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Tập luyện</a></li>
+    <li><a href="Body Metrics.html" class="active"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M9 2a4 4 0 100 8 4 4 0 000-8zM3 16c0-3 2.7-5 6-5s6 2 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Body Metrics</a></li>
+    <li><a href="Reports.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M3 14l4-5 3 3 4-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Báo cáo</a></li>
+    <li><a href="Chatbot.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M3 5a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H7l-4 3V5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Trợ lý AI</a></li>
+    <li><a href="Blog.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="2" y="3" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 7h8M5 11h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Blog</a></li>
+  </ul>
+  <div class="sidebar-bottom"><a href="Profile.html" style="text-decoration:none"><div class="user-pill"><div class="user-avatar">TM</div><div><div class="user-name">Trần Minh</div><div class="user-plan">Pro Plan</div></div></div></a></div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left"><h1>Body Metrics</h1><p>Theo dõi số đo và thay đổi cơ thể theo thời gian</p></div>
+    <div class="topbar-right">
+      <button class="btn btn-ghost2 btn-sm" onclick="document.getElementById('add-entry-modal').classList.add('open')">+ Cập nhật hôm nay</button>
+      <button class="btn btn-primary btn-sm" onclick="document.getElementById('add-entry-modal').classList.add('open')">📸 Thêm ảnh</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- KPI row -->
+    <div class="grid-4 fade-up" style="margin-bottom:20px">
+      <div class="stat-card">
+        <div class="icon-wrap">⚖️</div>
+        <div class="stat-val">68.4<span style="font-size:13px;font-family:'DM Sans',sans-serif;font-weight:400;color:var(--text-muted)">kg</span></div>
+        <div class="stat-label">Cân nặng hiện tại</div>
+        <div class="stat-change down" style="margin-top:8px">↓ −1.6kg từ tháng trước</div>
+        <div style="margin-top:10px">
+          <div class="mini-chart" style="height:36px">
+            <div class="mini-bar" style="height:100%"></div><div class="mini-bar" style="height:92%"></div><div class="mini-bar" style="height:88%"></div><div class="mini-bar" style="height:95%"></div><div class="mini-bar" style="height:85%"></div><div class="mini-bar" style="height:78%"></div><div class="mini-bar highlighted" style="height:76%"></div>
+          </div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="icon-wrap">📐</div>
+        <div class="stat-val">22.3</div>
+        <div class="stat-label">BMI</div>
+        <div class="stat-change down" style="margin-top:8px">Bình thường (18.5–24.9)</div>
+        <div class="bmi-bar" style="margin-top:10px">
+          <div class="bmi-needle" style="left:40%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted)"><span>Gầy</span><span>BT</span><span>Thừa cân</span><span>Béo</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="icon-wrap">📏</div>
+        <div class="stat-val">18.5<span style="font-size:13px;font-family:'DM Sans',sans-serif;font-weight:400;color:var(--text-muted)">%</span></div>
+        <div class="stat-label">Tỷ lệ mỡ cơ thể</div>
+        <div class="stat-change down" style="margin-top:8px">↓ −0.8% từ tháng trước</div>
+        <div style="margin-top:10px"><div class="prog-bar" style="height:8px"><div class="prog-fill" style="width:62%"></div></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="icon-wrap">💪</div>
+        <div class="stat-val">55.8<span style="font-size:13px;font-family:'DM Sans',sans-serif;font-weight:400;color:var(--text-muted)">kg</span></div>
+        <div class="stat-label">Khối lượng cơ (LBM)</div>
+        <div class="stat-change up" style="margin-top:8px">↑ +0.4kg từ tháng trước</div>
+        <div style="margin-top:10px"><div class="prog-bar" style="height:8px"><div class="prog-fill orange" style="width:81%"></div></div></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start">
+      <!-- Left: Timeline -->
+      <div>
+        <!-- Tabs -->
+        <div class="metrics-tabs fade-up" style="animation-delay:.06s">
+          <button class="metrics-tab active" onclick="setTab(this,'timeline')">Lịch sử</button>
+          <button class="metrics-tab" onclick="setTab(this,'photos')">Ảnh so sánh</button>
+          <button class="metrics-tab" onclick="setTab(this,'charts')">Biểu đồ</button>
+        </div>
+
+        <!-- Timeline tab -->
+        <div id="tab-timeline">
+          <div class="timeline fade-up" style="animation-delay:.1s">
+            <!-- Today -->
+            <div class="timeline-entry">
+              <div class="timeline-dot today"></div>
+              <div class="entry-card">
+                <div class="entry-header">
+                  <div>
+                    <div class="entry-date">Hôm nay — 23/04/2026</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Cảm giác: Khoẻ mạnh, năng lượng tốt</div>
+                  </div>
+                  <div class="badge badge-green">Hôm nay</div>
+                </div>
+                <div class="entry-body">
+                  <div class="metric-chip"><div class="metric-val">68.4</div><div class="metric-lbl">Cân nặng (kg)</div><div class="metric-change down">↓ −0.3</div></div>
+                  <div class="metric-chip"><div class="metric-val">80</div><div class="metric-lbl">Vòng eo (cm)</div><div class="metric-change down">↓ −0.5</div></div>
+                  <div class="metric-chip"><div class="metric-val">96</div><div class="metric-lbl">Vòng hông (cm)</div><div class="metric-change down">↓ −0.2</div></div>
+                  <div class="metric-chip"><div class="metric-val">38</div><div class="metric-lbl">Vòng ngực (cm)</div><div class="metric-change" style="color:var(--text-muted)">—</div></div>
+                  <div class="metric-chip"><div class="metric-val">55</div><div class="metric-lbl">Vòng đùi (cm)</div><div class="metric-change down">↓ −0.3</div></div>
+                  <div class="photo-thumb">🧍</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 16/04 -->
+            <div class="timeline-entry">
+              <div class="timeline-dot"></div>
+              <div class="entry-card">
+                <div class="entry-header">
+                  <div>
+                    <div class="entry-date">16/04/2026</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Cảm giác: Hơi mệt, sau buổi tập nặng</div>
+                  </div>
+                  <div class="badge" style="background:var(--bg);color:var(--text-muted)">7 ngày trước</div>
+                </div>
+                <div class="entry-body">
+                  <div class="metric-chip"><div class="metric-val">68.7</div><div class="metric-lbl">Cân nặng (kg)</div><div class="metric-change down">↓ −0.5</div></div>
+                  <div class="metric-chip"><div class="metric-val">80.5</div><div class="metric-lbl">Vòng eo (cm)</div><div class="metric-change down">↓ −0.5</div></div>
+                  <div class="metric-chip"><div class="metric-val">96.2</div><div class="metric-lbl">Vòng hông (cm)</div><div class="metric-change down">↓ −0.3</div></div>
+                  <div class="metric-chip"><div class="metric-val">38</div><div class="metric-lbl">Vòng ngực (cm)</div><div class="metric-change" style="color:var(--text-muted)">—</div></div>
+                  <div class="metric-chip"><div class="metric-val">55.3</div><div class="metric-lbl">Vòng đùi (cm)</div><div class="metric-change down">↓ −0.2</div></div>
+                  <div class="photo-thumb">📸</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 09/04 -->
+            <div class="timeline-entry">
+              <div class="timeline-dot"></div>
+              <div class="entry-card">
+                <div class="entry-header">
+                  <div>
+                    <div class="entry-date">09/04/2026</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Cảm giác: Bình thường</div>
+                  </div>
+                  <div class="badge" style="background:var(--bg);color:var(--text-muted)">14 ngày trước</div>
+                </div>
+                <div class="entry-body">
+                  <div class="metric-chip"><div class="metric-val">69.2</div><div class="metric-lbl">Cân nặng (kg)</div><div class="metric-change down">↓ −0.6</div></div>
+                  <div class="metric-chip"><div class="metric-val">81</div><div class="metric-lbl">Vòng eo (cm)</div><div class="metric-change down">↓ −0.5</div></div>
+                  <div class="metric-chip"><div class="metric-val">96.5</div><div class="metric-lbl">Vòng hông (cm)</div><div class="metric-change down">↓ −0.5</div></div>
+                  <div class="metric-chip"><div class="metric-val">38.5</div><div class="metric-lbl">Vòng ngực (cm)</div><div class="metric-change up">↑ +0.5</div></div>
+                  <div class="metric-chip"><div class="metric-val">55.5</div><div class="metric-lbl">Vòng đùi (cm)</div><div class="metric-change down">↓ −0.5</div></div>
+                  <div class="photo-thumb">📸</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 25/03 - Start -->
+            <div class="timeline-entry">
+              <div class="timeline-dot" style="background:var(--text-muted);box-shadow:0 0 0 2px var(--text-muted)"></div>
+              <div class="entry-card" style="border-color:var(--border)">
+                <div class="entry-header">
+                  <div>
+                    <div class="entry-date">25/03/2026 — Điểm khởi đầu</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Bắt đầu hành trình với Tracker</div>
+                  </div>
+                  <div class="badge badge-blue">Điểm đầu</div>
+                </div>
+                <div class="entry-body">
+                  <div class="metric-chip"><div class="metric-val">70.0</div><div class="metric-lbl">Cân nặng (kg)</div><div class="metric-change" style="color:var(--text-muted)">Bắt đầu</div></div>
+                  <div class="metric-chip"><div class="metric-val">83</div><div class="metric-lbl">Vòng eo (cm)</div><div class="metric-change" style="color:var(--text-muted)">Bắt đầu</div></div>
+                  <div class="metric-chip"><div class="metric-val">97.5</div><div class="metric-lbl">Vòng hông (cm)</div><div class="metric-change" style="color:var(--text-muted)">Bắt đầu</div></div>
+                  <div class="metric-chip"><div class="metric-val">38</div><div class="metric-lbl">Vòng ngực (cm)</div><div class="metric-change" style="color:var(--text-muted)">Bắt đầu</div></div>
+                  <div class="metric-chip"><div class="metric-val">56.5</div><div class="metric-lbl">Vòng đùi (cm)</div><div class="metric-change" style="color:var(--text-muted)">Bắt đầu</div></div>
+                  <div class="photo-thumb">📸</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Photos tab -->
+        <div id="tab-photos" style="display:none">
+          <div class="card card-pad fade-up">
+            <div style="font-size:14px;font-weight:700;color:var(--green-dark);margin-bottom:6px">So sánh ảnh trước / sau</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px">Chọn 2 mốc thời gian để so sánh</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Trước — 25/03/2026</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+                  <div class="photo-slot filled" style="aspect-ratio:3/4"><div class="slot-emoji">🧍</div><div class="slot-label">Trước</div></div>
+                  <div class="photo-slot filled" style="aspect-ratio:3/4"><div class="slot-emoji">🧍</div><div class="slot-label">Nghiêng</div></div>
+                  <div class="photo-slot filled" style="aspect-ratio:3/4"><div class="slot-emoji">🧍</div><div class="slot-label">Sau lưng</div></div>
+                </div>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--green-accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Sau — 23/04/2026</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+                  <div class="photo-slot filled" style="aspect-ratio:3/4;border-color:var(--green-accent)"><div class="slot-emoji" style="font-size:40px">🧍</div><div class="slot-label" style="color:var(--green-accent)">Trước</div></div>
+                  <div class="photo-slot filled" style="aspect-ratio:3/4;border-color:var(--green-accent)"><div class="slot-emoji" style="font-size:40px">🧍</div><div class="slot-label" style="color:var(--green-accent)">Nghiêng</div></div>
+                  <div class="photo-slot filled" style="aspect-ratio:3/4;border-color:var(--green-accent)"><div class="slot-emoji" style="font-size:40px">🧍</div><div class="slot-label" style="color:var(--green-accent)">Sau lưng</div></div>
+                </div>
+              </div>
+            </div>
+            <div style="background:var(--green-light);border-radius:12px;padding:14px;margin-top:20px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center">
+              <div><div style="font-size:18px;font-weight:700;color:var(--green-dark);font-family:'Playfair Display',serif">−1.6kg</div><div style="font-size:11px;color:var(--text-muted)">Cân nặng</div></div>
+              <div><div style="font-size:18px;font-weight:700;color:var(--green-dark);font-family:'Playfair Display',serif">−3cm</div><div style="font-size:11px;color:var(--text-muted)">Vòng eo</div></div>
+              <div><div style="font-size:18px;font-weight:700;color:var(--green-dark);font-family:'Playfair Display',serif">−1.5cm</div><div style="font-size:11px;color:var(--text-muted)">Vòng hông</div></div>
+              <div><div style="font-size:18px;font-weight:700;color:var(--green-dark);font-family:'Playfair Display',serif">29 ngày</div><div style="font-size:11px;color:var(--text-muted)">Thời gian</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts tab -->
+        <div id="tab-charts" style="display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" class="fade-up">
+            <div class="card card-pad">
+              <div style="font-size:13px;font-weight:700;color:var(--green-dark);margin-bottom:16px">Cân nặng (kg)</div>
+              <svg width="100%" height="100" viewBox="0 0 300 100" preserveAspectRatio="none">
+                <defs><linearGradient id="wGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3a8f67"/><stop offset="100%" stop-color="#3a8f67" stop-opacity="0"/></linearGradient></defs>
+                <path d="M0,15 L60,30 L120,48 L180,62 L240,74 L300,82 L300,100 L0,100Z" fill="url(#wGrad)" opacity=".2"/>
+                <path d="M0,15 L60,30 L120,48 L180,62 L240,74 L300,82" fill="none" stroke="var(--green-accent)" stroke-width="2.5" stroke-linecap="round"/>
+                <circle cx="300" cy="82" r="4" fill="var(--green-cta)" stroke="#fff" stroke-width="2"/>
+              </svg>
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:4px"><span>25/3</span><span>9/4</span><span>16/4</span><span>Hôm nay</span></div>
+            </div>
+            <div class="card card-pad">
+              <div style="font-size:13px;font-weight:700;color:var(--green-dark);margin-bottom:16px">Vòng eo (cm)</div>
+              <svg width="100%" height="100" viewBox="0 0 300 100" preserveAspectRatio="none">
+                <path d="M0,10 L60,28 L120,45 L180,60 L240,72 L300,80 L300,100 L0,100Z" fill="url(#wGrad)" opacity=".15"/>
+                <path d="M0,10 L60,28 L120,45 L180,60 L240,72 L300,80" fill="none" stroke="#f4a62a" stroke-width="2.5" stroke-linecap="round"/>
+                <circle cx="300" cy="80" r="4" fill="#f4a62a" stroke="#fff" stroke-width="2"/>
+              </svg>
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:4px"><span>25/3</span><span>9/4</span><span>16/4</span><span>Hôm nay</span></div>
+            </div>
+            <div class="card card-pad">
+              <div style="font-size:13px;font-weight:700;color:var(--green-dark);margin-bottom:16px">% Mỡ cơ thể</div>
+              <svg width="100%" height="100" viewBox="0 0 300 100" preserveAspectRatio="none">
+                <path d="M0,8 L60,22 L120,40 L180,55 L240,68 L300,76 L300,100 L0,100Z" fill="#e05c5c" opacity=".1"/>
+                <path d="M0,8 L60,22 L120,40 L180,55 L240,68 L300,76" fill="none" stroke="#e05c5c" stroke-width="2.5" stroke-linecap="round"/>
+                <circle cx="300" cy="76" r="4" fill="#e05c5c" stroke="#fff" stroke-width="2"/>
+              </svg>
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:4px"><span>25/3</span><span>9/4</span><span>16/4</span><span>Hôm nay</span></div>
+            </div>
+            <div class="card card-pad">
+              <div style="font-size:13px;font-weight:700;color:var(--green-dark);margin-bottom:16px">Khối lượng cơ (kg)</div>
+              <svg width="100%" height="100" viewBox="0 0 300 100" preserveAspectRatio="none">
+                <path d="M0,80 L60,72 L120,60 L180,50 L240,38 L300,30 L300,100 L0,100Z" fill="#4a90e2" opacity=".1"/>
+                <path d="M0,80 L60,72 L120,60 L180,50 L240,38 L300,30" fill="none" stroke="#4a90e2" stroke-width="2.5" stroke-linecap="round"/>
+                <circle cx="300" cy="30" r="4" fill="#4a90e2" stroke="#fff" stroke-width="2"/>
+              </svg>
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:4px"><span>25/3</span><span>9/4</span><span>16/4</span><span>Hôm nay</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right sidebar -->
+      <div style="position:sticky;top:80px;display:flex;flex-direction:column;gap:16px">
+        <!-- Quick update -->
+        <div class="card card-pad fade-up" style="animation-delay:.08s">
+          <div style="font-size:14px;font-weight:700;color:var(--green-dark);margin-bottom:16px">Cập nhật nhanh hôm nay</div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+            <div><div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:4px">CÂN NẶNG</div>
+              <div class="m-input-wrap"><input value="68.4" type="number" step="0.1"><span class="m-unit">kg</span></div></div>
+            <div><div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:4px">VÒNG EO</div>
+              <div class="m-input-wrap"><input value="80" type="number" step="0.5"><span class="m-unit">cm</span></div></div>
+            <div><div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:4px">CẢM GIÁC HÔM NAY</div>
+              <div class="condition-grid">
+                <div class="cond-btn" onclick="selectCond(this)"><span class="cond-icon">😫</span>Mệt</div>
+                <div class="cond-btn" onclick="selectCond(this)"><span class="cond-icon">😐</span>Bình thường</div>
+                <div class="cond-btn selected" onclick="selectCond(this)"><span class="cond-icon">😊</span>Khoẻ</div>
+                <div class="cond-btn" onclick="selectCond(this)"><span class="cond-icon">💪</span>Rất tốt</div>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="saveEntry()">Lưu cập nhật</button>
+        </div>
+
+        <!-- Goal progress -->
+        <div class="card card-pad fade-up" style="animation-delay:.12s">
+          <div style="font-size:14px;font-weight:700;color:var(--green-dark);margin-bottom:14px">Tiến trình mục tiêu</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:12px;color:var(--text-muted)">Cân nặng: 68.4 → 65kg</span>
+            <span class="badge badge-green">−1.6kg</span>
+          </div>
+          <div class="prog-bar" style="height:10px;margin-bottom:14px"><div class="prog-fill" style="width:37%"></div></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:12px;color:var(--text-muted)">Vòng eo: 80 → 76cm</span>
+            <span class="badge badge-green">−3cm</span>
+          </div>
+          <div class="prog-bar" style="height:10px"><div class="prog-fill orange" style="width:43%"></div></div>
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted)">Ước tính đạt mục tiêu cân nặng trong <strong style="color:var(--green-dark)">~5 tuần</strong></div>
+        </div>
+
+        <!-- Add photo -->
+        <div class="card card-pad fade-up" style="animation-delay:.16s">
+          <div style="font-size:14px;font-weight:700;color:var(--green-dark);margin-bottom:14px">Ảnh hôm nay</div>
+          <div class="photo-preview-grid">
+            <div class="photo-slot" onclick="uploadPhoto(this,'Trước')"><div style="font-size:24px">📷</div><div class="slot-label">Trước</div></div>
+            <div class="photo-slot" onclick="uploadPhoto(this,'Nghiêng')"><div style="font-size:24px">📷</div><div class="slot-label">Nghiêng</div></div>
+            <div class="photo-slot" onclick="uploadPhoto(this,'Sau lưng')"><div style="font-size:24px">📷</div><div class="slot-label">Sau lưng</div></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:10px;text-align:center">Ảnh chỉ bạn mới xem được, bảo mật tuyệt đối</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add entry modal -->
+<div class="lightbox" id="add-entry-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="lightbox-inner" style="max-width:580px">
+    <div style="font-size:18px;font-weight:700;color:var(--green-dark);margin-bottom:4px;font-family:'Playfair Display',serif">Cập nhật Body Metrics</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px">23/04/2026</div>
+    <div class="measurements-grid" style="margin-bottom:16px">
+      <div class="m-field"><label>Cân nặng</label><div class="m-input-wrap"><input value="68.4" type="number" step="0.1"><span class="m-unit">kg</span></div></div>
+      <div class="m-field"><label>Vòng eo</label><div class="m-input-wrap"><input value="80" type="number" step="0.5"><span class="m-unit">cm</span></div></div>
+      <div class="m-field"><label>Vòng hông</label><div class="m-input-wrap"><input value="96" type="number" step="0.5"><span class="m-unit">cm</span></div></div>
+      <div class="m-field"><label>Vòng ngực</label><div class="m-input-wrap"><input value="38" type="number" step="0.5"><span class="m-unit">cm</span></div></div>
+      <div class="m-field"><label>Vòng đùi (T)</label><div class="m-input-wrap"><input value="55" type="number" step="0.5"><span class="m-unit">cm</span></div></div>
+      <div class="m-field"><label>Vòng cánh tay</label><div class="m-input-wrap"><input value="32" type="number" step="0.5"><span class="m-unit">cm</span></div></div>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Cảm giác hôm nay</div>
+      <div class="condition-grid">
+        <div class="cond-btn" onclick="selectCond2(this)"><span class="cond-icon">😫</span>Mệt</div>
+        <div class="cond-btn" onclick="selectCond2(this)"><span class="cond-icon">😐</span>Bình thường</div>
+        <div class="cond-btn selected" onclick="selectCond2(this)"><span class="cond-icon">😊</span>Khoẻ</div>
+        <div class="cond-btn" onclick="selectCond2(this)"><span class="cond-icon">💪</span>Rất tốt</div>
+      </div>
+    </div>
+    <div style="margin-bottom:20px">
+      <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Ghi chú</div>
+      <textarea class="input" rows="2" style="border-radius:10px;resize:none" placeholder="Nhận xét về cơ thể hôm nay..."></textarea>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <button class="btn btn-ghost2" style="justify-content:center" onclick="document.getElementById('add-entry-modal').classList.remove('open')">Huỷ</button>
+      <button class="btn btn-primary" style="justify-content:center" onclick="saveModalEntry()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--green-dark);color:#fff;padding:12px 24px;border-radius:100px;font-size:14px;font-weight:600;transition:transform .3s,opacity .3s;z-index:9999;opacity:0">✓ Đã lưu cập nhật</div>
+
+<script>
+function setTab(el, tab) {
+  document.querySelectorAll('.metrics-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['timeline','photos','charts'].forEach(t => {
+    const el2 = document.getElementById('tab-'+t);
+    if(el2) el2.style.display = t===tab?'block':'none';
+  });
+}
+function selectCond(el) { el.closest('.condition-grid').querySelectorAll('.cond-btn').forEach(b=>b.classList.remove('selected')); el.classList.add('selected'); }
+function selectCond2(el) { selectCond(el); }
+function uploadPhoto(el, label) {
+  el.innerHTML = '<div class="slot-emoji" style="font-size:36px">🧍</div><div class="slot-label" style="color:var(--green-accent)">'+label+'</div>';
+  el.classList.add('filled'); el.style.borderColor='var(--green-accent)';
+}
+function saveEntry() { showToast('✓ Đã lưu số liệu hôm nay'); }
+function saveModalEntry() { document.getElementById('add-entry-modal').classList.remove('open'); showToast('✓ Đã lưu body metrics'); }
+function showToast(msg) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)';
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(60px)'; }, 2200);
+}
+</script>
+</body>
+</html>

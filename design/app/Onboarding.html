@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tracker — Thiết lập hồ sơ sức khoẻ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #eef8f2;
+  --green-dark: #1a3829;
+  --green-mid: #2d6a4f;
+  --green-accent: #3a8f67;
+  --green-light: #d4eddf;
+  --green-cta: #1e4d35;
+  --text-body: #3d4d44;
+  --text-muted: #7a9080;
+  --border: #c9e4d4;
+  --radius: 16px;
+  --shadow: 0 2px 16px rgba(30,77,53,0.07);
+  --shadow-md: 0 8px 32px rgba(30,77,53,0.13);
+}
+html, body { height: 100%; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text-body);
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* HEADER */
+.ob-header {
+  padding: 20px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.ob-logo { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--green-dark); text-decoration: none; }
+.ob-logo span { color: var(--green-accent); }
+.ob-step-label { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+
+/* PROGRESS */
+.ob-progress { padding: 0 32px 0; flex-shrink: 0; }
+.ob-progress-track { height: 4px; background: var(--border); border-radius: 100px; overflow: hidden; }
+.ob-progress-fill { height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(--green-accent), #52d68e); transition: width .5s cubic-bezier(.4,0,.2,1); }
+.ob-step-dots { display: flex; justify-content: space-between; margin-top: 10px; }
+.ob-dot { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.ob-dot-circle { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border); background: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--text-muted); transition: all .3s; }
+.ob-dot-circle.done { background: var(--green-accent); border-color: var(--green-accent); color: #fff; }
+.ob-dot-circle.active { border-color: var(--green-accent); color: var(--green-accent); background: #fff; box-shadow: 0 0 0 4px rgba(58,143,103,.12); }
+.ob-dot-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-align: center; max-width: 60px; }
+.ob-dot-label.active { color: var(--green-dark); }
+
+/* MAIN STAGE */
+.ob-stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px 32px; }
+.ob-card {
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid rgba(201,228,212,.4);
+  width: 100%;
+  max-width: 600px;
+  overflow: hidden;
+  position: relative;
+}
+.ob-card-inner { padding: 36px 40px; }
+.ob-step { display: none; animation: stepIn .35s cubic-bezier(.4,0,.2,1) both; }
+.ob-step.active { display: block; }
+@keyframes stepIn { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes stepBack { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: translateX(0); } }
+.ob-step.back { animation: stepBack .35s cubic-bezier(.4,0,.2,1) both; }
+
+.step-eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--green-accent); margin-bottom: 6px; }
+.step-title { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; color: var(--green-dark); margin-bottom: 6px; line-height: 1.2; }
+.step-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 28px; }
+
+/* Form elements */
+.form-group { margin-bottom: 20px; }
+.form-label { font-size: 12px; font-weight: 700; color: var(--text-muted); letter-spacing: .3px; display: block; margin-bottom: 8px; }
+.form-input {
+  width: 100%; padding: 11px 14px; border-radius: 12px;
+  border: 1.5px solid var(--border); font-family: 'DM Sans', sans-serif;
+  font-size: 15px; color: var(--text-body); background: #fff;
+  outline: none; transition: border .2s;
+}
+.form-input:focus { border-color: var(--green-accent); }
+.input-group { display: flex; gap: 8px; }
+.input-group .form-input { flex: 1; }
+.input-group select.form-input { width: auto; flex: 0 0 80px; cursor: pointer; }
+
+/* Radio / selection cards */
+.card-options { display: grid; gap: 10px; }
+.card-options.cols-2 { grid-template-columns: 1fr 1fr; }
+.card-options.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.option-card {
+  border: 2px solid var(--border); border-radius: 14px; padding: 14px 16px;
+  cursor: pointer; transition: all .18s; display: flex; align-items: center; gap: 12px;
+  background: #fff; font-family: 'DM Sans', sans-serif; text-align: left; width: 100%;
+}
+.option-card:hover { border-color: var(--green-accent); background: #f6fff9; }
+.option-card.selected { border-color: var(--green-accent); background: #f0fbf5; }
+.option-card.selected .oc-title { color: var(--green-dark); }
+.option-card .oc-icon { font-size: 24px; flex-shrink: 0; width: 44px; height: 44px; border-radius: 12px; background: var(--bg); display: flex; align-items: center; justify-content: center; transition: background .18s; }
+.option-card.selected .oc-icon { background: var(--green-light); }
+.option-card .oc-body { flex: 1; }
+.option-card .oc-title { font-size: 14px; font-weight: 700; color: var(--text-body); display: block; line-height: 1.2; }
+.option-card .oc-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; display: block; }
+.option-card .oc-check { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all .18s; }
+.option-card.selected .oc-check { background: var(--green-accent); border-color: var(--green-accent); }
+.option-card.selected .oc-check::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #fff; display: block; }
+
+/* Gender cards */
+.gender-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.gender-card {
+  border: 2px solid var(--border); border-radius: 16px; padding: 24px 16px;
+  text-align: center; cursor: pointer; transition: all .18s; background: #fff;
+}
+.gender-card:hover { border-color: var(--green-accent); background: #f6fff9; }
+.gender-card.selected { border-color: var(--green-accent); background: #f0fbf5; }
+.gender-card .gc-icon { font-size: 36px; margin-bottom: 8px; }
+.gender-card .gc-label { font-size: 15px; font-weight: 700; color: var(--green-dark); }
+
+/* Multi-select badges */
+.badge-select { display: flex; flex-wrap: wrap; gap: 8px; }
+.badge-option {
+  padding: 8px 16px; border-radius: 100px; border: 1.5px solid var(--border);
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s;
+  color: var(--text-muted); background: #fff; font-family: 'DM Sans', sans-serif;
+}
+.badge-option:hover { border-color: var(--green-accent); color: var(--green-dark); }
+.badge-option.selected { background: var(--green-light); border-color: var(--green-accent); color: var(--green-dark); }
+
+/* Weight comparison */
+.weight-compare {
+  background: var(--bg); border-radius: 14px; padding: 16px;
+  display: flex; align-items: center; gap: 16px; margin-top: 12px;
+}
+.wc-item { text-align: center; flex: 1; }
+.wc-val { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--green-dark); }
+.wc-lbl { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.wc-arrow { font-size: 22px; color: var(--green-accent); }
+.wc-diff { font-size: 12px; font-weight: 700; text-align: center; margin-top: 8px; }
+
+/* FOOTER nav */
+.ob-footer { padding: 20px 40px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); background: #fff; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 11px 22px; border-radius: 100px;
+  font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+  cursor: pointer; border: none; transition: all .2s;
+}
+.btn-primary { background: var(--green-cta); color: #fff; }
+.btn-primary:hover { background: var(--green-accent); transform: translateY(-1px); }
+.btn-ghost { background: var(--bg); color: var(--text-body); border: 1.5px solid var(--border); }
+.btn-ghost:hover { background: var(--green-light); border-color: var(--green-accent); color: var(--green-dark); }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none !important; }
+
+/* STEP 5: Loading */
+.loading-state { padding: 56px 40px; text-align: center; }
+.loader-ring { width: 80px; height: 80px; border-radius: 50%; border: 5px solid var(--green-light); border-top-color: var(--green-accent); animation: spin 1s linear infinite; margin: 0 auto 24px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.calc-steps { display: flex; flex-direction: column; gap: 10px; margin: 20px auto; max-width: 280px; text-align: left; }
+.calc-step { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; color: var(--text-muted); }
+.calc-step .cs-icon { width: 22px; height: 22px; border-radius: 50%; background: var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; transition: all .3s; }
+.calc-step.done .cs-icon { background: var(--green-accent); color: #fff; }
+.calc-step.done { color: var(--green-dark); }
+
+/* STEP 5: Results */
+.result-hero {
+  background: linear-gradient(135deg, var(--green-cta) 0%, var(--green-mid) 100%);
+  padding: 28px 40px; color: #fff; display: flex; justify-content: space-between; align-items: flex-start; gap: 24px;
+}
+.result-hero h2 { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.result-hero p { font-size: 13px; opacity: .75; }
+.bmi-badge { background: rgba(255,255,255,.15); border-radius: 12px; padding: 12px 18px; text-align: center; flex-shrink: 0; }
+.bmi-val { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 700; line-height: 1; }
+.bmi-lbl { font-size: 10px; opacity: .7; margin-top: 2px; }
+.result-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 20px; }
+.rstat { background: var(--bg); border-radius: 12px; padding: 14px 16px; }
+.rstat-val { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--green-dark); line-height: 1; }
+.rstat-lbl { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+.macro-bar-row { padding: 0 20px 20px; }
+.macro-bar-track { height: 10px; border-radius: 100px; background: var(--border); overflow: hidden; display: flex; gap: 2px; margin-top: 6px; }
+.macro-seg { height: 100%; border-radius: 100px; }
+.macro-legend { display: flex; gap: 16px; margin-top: 8px; }
+.ml-item { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.ml-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+/* Validation */
+.field-error { font-size: 11px; color: #e05c5c; margin-top: 4px; display: none; }
+.field-error.visible { display: block; }
+.form-input.error { border-color: #e05c5c; }
+
+/* Toast */
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(60px); background: #e05c5c; color: #fff; padding: 10px 20px; border-radius: 100px; font-size: 13px; font-weight: 600; transition: transform .3s, opacity .3s; z-index: 999; opacity: 0; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="ob-header">
+  <a href="#" class="ob-logo">Tracker<span>.</span></a>
+  <span class="ob-step-label" id="step-label">Bước 1 / 5</span>
+</div>
+
+<!-- PROGRESS -->
+<div class="ob-progress">
+  <div class="ob-progress-track">
+    <div class="ob-progress-fill" id="prog-fill" style="width:20%"></div>
+  </div>
+  <div class="ob-step-dots">
+    <div class="ob-dot"><div class="ob-dot-circle active" id="dot-1">1</div><div class="ob-dot-label active">Cơ bản</div></div>
+    <div class="ob-dot"><div class="ob-dot-circle" id="dot-2">2</div><div class="ob-dot-label">Vận động</div></div>
+    <div class="ob-dot"><div class="ob-dot-circle" id="dot-3">3</div><div class="ob-dot-label">Mục tiêu</div></div>
+    <div class="ob-dot"><div class="ob-dot-circle" id="dot-4">4</div><div class="ob-dot-label">Chế độ ăn</div></div>
+    <div class="ob-dot"><div class="ob-dot-circle" id="dot-5">5</div><div class="ob-dot-label">Kết quả</div></div>
+  </div>
+</div>
+
+<!-- STAGE -->
+<div class="ob-stage">
+  <div class="ob-card">
+
+    <!-- ═══ STEP 1 ═══ -->
+    <div class="ob-step active" id="step-1">
+      <div class="ob-card-inner">
+        <div class="step-eyebrow">Bước 1 — Thông tin cơ bản</div>
+        <div class="step-title">Hãy cho chúng tôi biết về bạn</div>
+        <div class="step-sub">Thông tin này giúp chúng tôi tính toán chỉ số sức khoẻ chính xác nhất.</div>
+
+        <div class="form-group">
+          <label class="form-label">Giới tính <span style="color:#e05c5c">*</span></label>
+          <div class="gender-cards">
+            <button class="gender-card selected" id="g-male" onclick="selectGender('male')">
+              <div class="gc-icon">👨</div>
+              <div class="gc-label">Nam</div>
+            </button>
+            <button class="gender-card" id="g-female" onclick="selectGender('female')">
+              <div class="gc-icon">👩</div>
+              <div class="gc-label">Nữ</div>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="dob">Ngày sinh <span style="color:#e05c5c">*</span></label>
+          <input type="date" class="form-input" id="dob" max="2010-01-01" value="1995-06-15">
+          <div class="field-error" id="err-dob">Vui lòng nhập ngày sinh hợp lệ</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Chiều cao <span style="color:#e05c5c">*</span></label>
+            <div class="input-group">
+              <input type="number" class="form-input" id="height" placeholder="170" value="172" min="100" max="250">
+              <select class="form-input" id="height-unit" style="flex:0 0 64px">
+                <option>cm</option>
+                <option>ft</option>
+              </select>
+            </div>
+            <div class="field-error" id="err-height">Nhập chiều cao từ 100–250 cm</div>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Cân nặng <span style="color:#e05c5c">*</span></label>
+            <div class="input-group">
+              <input type="number" class="form-input" id="weight" placeholder="65" value="68" min="30" max="300">
+              <select class="form-input" id="weight-unit" style="flex:0 0 64px">
+                <option>kg</option>
+                <option>lbs</option>
+              </select>
+            </div>
+            <div class="field-error" id="err-weight">Nhập cân nặng từ 30–300 kg</div>
+          </div>
+        </div>
+      </div>
+      <div class="ob-footer">
+        <div style="font-size:13px;color:var(--text-muted)">Chào mừng bạn! 👋</div>
+        <button class="btn btn-primary" onclick="nextStep(1)">
+          Tiếp tục
+          <svg width="14" height="14" fill="none" viewBox="0 0 14 14"><path d="M3 7h8M8 4l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══ STEP 2 ═══ -->
+    <div class="ob-step" id="step-2">
+      <div class="ob-card-inner">
+        <div class="step-eyebrow">Bước 2 — Mức độ vận động</div>
+        <div class="step-title">Bạn vận động thế nào?</div>
+        <div class="step-sub">Mức độ hoạt động hàng ngày giúp tính chính xác năng lượng tiêu thụ.</div>
+
+        <div class="card-options" id="activity-options">
+          <button class="option-card" onclick="selectOption('activity-options', this, 1.2)">
+            <div class="oc-icon">🪑</div>
+            <div class="oc-body">
+              <span class="oc-title">Ít vận động</span>
+              <span class="oc-sub">Ngồi nhiều, ít đi lại, không tập thể dục</span>
+            </div>
+            <div class="oc-check"></div>
+          </button>
+          <button class="option-card selected" onclick="selectOption('activity-options', this, 1.375)">
+            <div class="oc-icon">🚶</div>
+            <div class="oc-body">
+              <span class="oc-title">Nhẹ nhàng</span>
+              <span class="oc-sub">Tập thể dục nhẹ 1–3 ngày/tuần</span>
+            </div>
+            <div class="oc-check"></div>
+          </button>
+          <button class="option-card" onclick="selectOption('activity-options', this, 1.55)">
+            <div class="oc-icon">🏃</div>
+            <div class="oc-body">
+              <span class="oc-title">Vừa phải</span>
+              <span class="oc-sub">Tập thể dục vừa phải 3–5 ngày/tuần</span>
+            </div>
+            <div class="oc-check"></div>
+          </button>
+          <button class="option-card" onclick="selectOption('activity-options', this, 1.725)">
+            <div class="oc-icon">💪</div>
+            <div class="oc-body">
+              <span class="oc-title">Năng động</span>
+              <span class="oc-sub">Tập luyện cường độ cao 6–7 ngày/tuần</span>
+            </div>
+            <div class="oc-check"></div>
+          </button>
+          <button class="option-card" onclick="selectOption('activity-options', this, 1.9)">
+            <div class="oc-icon">🏋️</div>
+            <div class="oc-body">
+              <span class="oc-title">Cực kỳ năng động</span>
+              <span class="oc-sub">VĐV, tập luyện 2 lần/ngày</span>
+            </div>
+            <div class="oc-check"></div>
+          </button>
+        </div>
+      </div>
+      <div class="ob-footer">
+        <button class="btn btn-ghost" onclick="prevStep(2)">← Quay lại</button>
+        <button class="btn btn-primary" onclick="nextStep(2)">
+          Tiếp tục
+          <svg width="14" height="14" fill="none" viewBox="0 0 14 14"><path d="M3 7h8M8 4l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══ STEP 3 ═══ -->
+    <div class="ob-step" id="step-3">
+      <div class="ob-card-inner">
+        <div class="step-eyebrow">Bước 3 — Mục tiêu</div>
+        <div class="step-title">Bạn muốn đạt được gì?</div>
+        <div class="step-sub">Chúng tôi sẽ điều chỉnh kế hoạch dinh dưỡng phù hợp với mục tiêu của bạn.</div>
+
+        <div class="card-options cols-3" id="goal-options" style="margin-bottom:20px">
+          <button class="option-card" style="flex-direction:column;text-align:center;padding:20px 12px;align-items:center" onclick="selectGoal(this, -500)">
+            <div class="oc-icon" style="margin-bottom:8px">⬇️</div>
+            <span class="oc-title" style="text-align:center">Giảm cân</span>
+            <span class="oc-sub" style="text-align:center">Giảm mỡ thừa</span>
+          </button>
+          <button class="option-card selected" style="flex-direction:column;text-align:center;padding:20px 12px;align-items:center" onclick="selectGoal(this, 0)">
+            <div class="oc-icon" style="margin-bottom:8px;background:var(--green-light)">⚖️</div>
+            <span class="oc-title" style="text-align:center">Duy trì</span>
+            <span class="oc-sub" style="text-align:center">Giữ cân nặng hiện tại</span>
+          </button>
+          <button class="option-card" style="flex-direction:column;text-align:center;padding:20px 12px;align-items:center" onclick="selectGoal(this, 500)">
+            <div class="oc-icon" style="margin-bottom:8px">💪</div>
+            <span class="oc-title" style="text-align:center">Tăng cơ</span>
+            <span class="oc-sub" style="text-align:center">Xây dựng cơ bắp</span>
+          </button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Cân nặng mục tiêu</label>
+          <div class="input-group">
+            <input type="number" class="form-input" id="target-weight" value="63" min="30" max="300" oninput="updateWeightCompare()">
+            <select class="form-input" style="flex:0 0 64px"><option>kg</option><option>lbs</option></select>
+          </div>
+        </div>
+
+        <div class="weight-compare" id="weight-compare">
+          <div class="wc-item">
+            <div class="wc-val" id="wc-current">68 kg</div>
+            <div class="wc-lbl">Hiện tại</div>
+          </div>
+          <div class="wc-arrow">→</div>
+          <div class="wc-item">
+            <div class="wc-val" id="wc-target" style="color:var(--green-accent)">63 kg</div>
+            <div class="wc-lbl">Mục tiêu</div>
+          </div>
+          <div style="width:1px;background:var(--border);align-self:stretch"></div>
+          <div class="wc-item">
+            <div class="wc-val" id="wc-diff" style="color:#3a8f67">−5 kg</div>
+            <div class="wc-lbl">Chênh lệch</div>
+          </div>
+        </div>
+      </div>
+      <div class="ob-footer">
+        <button class="btn btn-ghost" onclick="prevStep(3)">← Quay lại</button>
+        <button class="btn btn-primary" onclick="nextStep(3)">
+          Tiếp tục
+          <svg width="14" height="14" fill="none" viewBox="0 0 14 14"><path d="M3 7h8M8 4l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══ STEP 4 ═══ -->
+    <div class="ob-step" id="step-4">
+      <div class="ob-card-inner">
+        <div class="step-eyebrow">Bước 4 — Chế độ ăn uống</div>
+        <div class="step-title">Bạn có hạn chế gì không?</div>
+        <div class="step-sub">Không bắt buộc. Giúp chúng tôi gợi ý thực phẩm phù hợp với bạn hơn.</div>
+
+        <div class="form-group">
+          <label class="form-label">Dị ứng & hạn chế thực phẩm</label>
+          <div class="badge-select" id="allergy-options">
+            <button class="badge-option" onclick="toggleBadge(this)">🥜 Đậu phộng</button>
+            <button class="badge-option" onclick="toggleBadge(this)">🥛 Sữa / Lactose</button>
+            <button class="badge-option" onclick="toggleBadge(this)">🌾 Gluten</button>
+            <button class="badge-option" onclick="toggleBadge(this)">🥚 Trứng</button>
+            <button class="badge-option" onclick="toggleBadge(this)">🦐 Hải sản</button>
+            <button class="badge-option" onclick="toggleBadge(this)">🌰 Hạt cây</button>
+            <button class="badge-option" onclick="toggleBadge(this)">🌿 Đậu nành</button>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Chế độ ăn đặc biệt</label>
+          <div class="badge-select" id="diet-options">
+            <button class="badge-option" onclick="toggleBadge(this)">🥗 Thuần chay (Vegan)</button>
+            <button class="badge-option" onclick="toggleBadge(this)">🥩 Ăn chay (Vegetarian)</button>
+            <button class="badge-option" onclick="toggleBadge(this)">🥑 Keto</button>
+            <button class="badge-option" onclick="toggleBadge(this)">⚡ Paleo</button>
+            <button class="badge-option" onclick="toggleBadge(this)">🕌 Halal</button>
+            <button class="badge-option" onclick="toggleBadge(this)">✡️ Kosher</button>
+          </div>
+        </div>
+      </div>
+      <div class="ob-footer">
+        <button class="btn btn-ghost" onclick="prevStep(4)">← Quay lại</button>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-ghost" onclick="nextStep(4)" style="color:var(--text-muted)">Bỏ qua</button>
+          <button class="btn btn-primary" onclick="nextStep(4)">
+            Hoàn thành
+            <svg width="14" height="14" fill="none" viewBox="0 0 14 14"><path d="M3 7h8M8 4l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ STEP 5: Loading ═══ -->
+    <div class="ob-step" id="step-5-loading">
+      <div class="loading-state">
+        <div class="loader-ring"></div>
+        <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--green-dark);margin-bottom:6px" id="calc-title">Đang tính toán...</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px">AI đang phân tích hồ sơ sức khoẻ của bạn</div>
+        <div class="calc-steps">
+          <div class="calc-step" id="cs1"><div class="cs-icon">1</div> Tính BMI và chỉ số cơ thể</div>
+          <div class="calc-step" id="cs2"><div class="cs-icon">2</div> Ước tính TDEE</div>
+          <div class="calc-step" id="cs3"><div class="cs-icon">3</div> Xây dựng kế hoạch calo</div>
+          <div class="calc-step" id="cs4"><div class="cs-icon">4</div> Tính tỷ lệ Macro tối ưu</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ STEP 5: Result ═══ -->
+    <div class="ob-step" id="step-5-result">
+      <div class="result-hero">
+        <div>
+          <div style="font-size:11px;opacity:.65;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Hồ sơ đã sẵn sàng 🎉</div>
+          <h2 id="res-name">Chào Trần Minh!</h2>
+          <p id="res-sub">Kế hoạch cá nhân hoá đã được tạo dựa trên hồ sơ của bạn.</p>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+            <span style="background:rgba(255,255,255,.15);border-radius:100px;padding:4px 12px;font-size:11px;font-weight:700" id="res-tag1">Duy trì cân nặng</span>
+            <span style="background:rgba(255,255,255,.15);border-radius:100px;padding:4px 12px;font-size:11px;font-weight:700" id="res-tag2">Nhẹ nhàng</span>
+          </div>
+        </div>
+        <div class="bmi-badge">
+          <div class="bmi-val" id="res-bmi">23.0</div>
+          <div class="bmi-lbl">BMI</div>
+          <div style="font-size:10px;margin-top:4px;opacity:.8" id="bmi-status">Bình thường</div>
+        </div>
+      </div>
+
+      <div class="result-stats">
+        <div class="rstat">
+          <div class="rstat-val" id="res-tdee">2,340</div>
+          <div class="rstat-lbl">TDEE (kcal/ngày)</div>
+        </div>
+        <div class="rstat">
+          <div class="rstat-val" id="res-target">2,340</div>
+          <div class="rstat-lbl">Mục tiêu calo/ngày</div>
+        </div>
+        <div class="rstat">
+          <div class="rstat-val" id="res-protein">175</div>
+          <div class="rstat-lbl">Protein (g/ngày)</div>
+        </div>
+        <div class="rstat">
+          <div class="rstat-val" id="res-water">2.4</div>
+          <div class="rstat-lbl">Nước uống (lít/ngày)</div>
+        </div>
+      </div>
+
+      <div class="macro-bar-row">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px">Phân bổ Macro</div>
+          <div style="font-size:12px;color:var(--text-muted)" id="res-macro-text">50% C · 25% P · 25% F</div>
+        </div>
+        <div class="macro-bar-track">
+          <div class="macro-seg" id="macro-c" style="background:#3a8f67;width:50%"></div>
+          <div class="macro-seg" id="macro-p" style="background:#f4a62a;width:25%"></div>
+          <div class="macro-seg" id="macro-f" style="background:#4a90e2;width:25%"></div>
+        </div>
+        <div class="macro-legend">
+          <div class="ml-item"><div class="ml-dot" style="background:#3a8f67"></div>Carbs <b id="m-carb">50%</b></div>
+          <div class="ml-item"><div class="ml-dot" style="background:#f4a62a"></div>Protein <b id="m-prot">25%</b></div>
+          <div class="ml-item"><div class="ml-dot" style="background:#4a90e2"></div>Fat <b id="m-fat">25%</b></div>
+        </div>
+      </div>
+
+      <div style="padding:0 20px 24px">
+        <a href="app/Dashboard.html" class="btn btn-primary" style="width:100%;justify-content:center;padding:14px;font-size:15px">
+          🚀 Bắt đầu hành trình của bạn
+        </a>
+        <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--text-muted)">Bạn có thể thay đổi thông tin này bất kỳ lúc nào trong Hồ sơ</div>
+      </div>
+    </div>
+
+  </div><!-- .ob-card -->
+</div><!-- .ob-stage -->
+
+<div id="toast"></div>
+
+<script>
+let currentStep = 1;
+let state = { gender: 'male', activityFactor: 1.375, goalAdj: 0 };
+
+const PROGRESS = [20, 40, 60, 80, 100];
+const STEP_LABELS = ['Bước 1 / 5','Bước 2 / 5','Bước 3 / 5','Bước 4 / 5','Bước 5 / 5'];
+
+function goToStep(n, dir) {
+  const prev = dir === 'next' ? n - 1 : n + 1;
+  const prevEl = prev <= 5 ? document.getElementById('step-' + prev) || document.getElementById('step-5-loading') : null;
+  const nextEl = n <= 5 ? document.getElementById('step-' + n) || document.getElementById('step-' + n + '-loading') : null;
+
+  // Hide all steps
+  document.querySelectorAll('.ob-step').forEach(s => s.classList.remove('active', 'back'));
+
+  // Show target
+  const target = n === 5 ? document.getElementById('step-5-loading') : document.getElementById('step-' + n);
+  if (!target) return;
+  target.classList.add('active');
+  if (dir === 'back') target.classList.add('back');
+
+  // Update progress
+  document.getElementById('prog-fill').style.width = PROGRESS[n-1] + '%';
+  document.getElementById('step-label').textContent = STEP_LABELS[n-1];
+
+  // Update dots
+  for (let i = 1; i <= 5; i++) {
+    const dot = document.getElementById('dot-' + i);
+    const lbl = dot.nextElementSibling;
+    dot.classList.remove('done', 'active');
+    lbl.classList.remove('active');
+    if (i < n) { dot.classList.add('done'); dot.textContent = '✓'; }
+    else if (i === n) { dot.classList.add('active'); dot.textContent = i; lbl.classList.add('active'); }
+    else { dot.textContent = i; }
+  }
+
+  currentStep = n;
+}
+
+function validateStep1() {
+  let valid = true;
+  const dob = document.getElementById('dob').value;
+  const height = parseFloat(document.getElementById('height').value);
+  const weight = parseFloat(document.getElementById('weight').value);
+
+  const errDob = document.getElementById('err-dob');
+  const errH = document.getElementById('err-height');
+  const errW = document.getElementById('err-weight');
+
+  errDob.classList.remove('visible'); errH.classList.remove('visible'); errW.classList.remove('visible');
+  document.getElementById('dob').classList.remove('error');
+  document.getElementById('height').classList.remove('error');
+  document.getElementById('weight').classList.remove('error');
+
+  if (!dob) { errDob.classList.add('visible'); document.getElementById('dob').classList.add('error'); valid = false; }
+  if (!height || height < 100 || height > 250) { errH.classList.add('visible'); document.getElementById('height').classList.add('error'); valid = false; }
+  if (!weight || weight < 30 || weight > 300) { errW.classList.add('visible'); document.getElementById('weight').classList.add('error'); valid = false; }
+
+  if (valid) {
+    state.height = height;
+    state.weight = weight;
+    state.dob = dob;
+    const birth = new Date(dob);
+    state.age = new Date().getFullYear() - birth.getFullYear();
+    document.getElementById('wc-current').textContent = weight + ' kg';
+    document.getElementById('target-weight').value = Math.round(weight * 0.93);
+    updateWeightCompare();
+  }
+  return valid;
+}
+
+function nextStep(from) {
+  if (from === 1 && !validateStep1()) return;
+  if (from < 5) goToStep(from + 1, 'next');
+  if (from === 4) startCalculation();
+}
+
+function prevStep(from) {
+  if (from > 1) goToStep(from - 1, 'back');
+}
+
+function selectGender(g) {
+  state.gender = g;
+  document.getElementById('g-male').classList.toggle('selected', g === 'male');
+  document.getElementById('g-female').classList.toggle('selected', g === 'female');
+}
+
+function selectOption(containerId, btn, value) {
+  document.querySelectorAll('#' + containerId + ' .option-card').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  if (containerId === 'activity-options') state.activityFactor = value;
+}
+
+function selectGoal(btn, adj) {
+  document.querySelectorAll('#goal-options .option-card').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  state.goalAdj = adj;
+}
+
+function toggleBadge(btn) { btn.classList.toggle('selected'); }
+
+function updateWeightCompare() {
+  const current = parseFloat(document.getElementById('weight').value) || 68;
+  const target = parseFloat(document.getElementById('target-weight').value) || 65;
+  const diff = target - current;
+  document.getElementById('wc-current').textContent = current + ' kg';
+  document.getElementById('wc-target').textContent = target + ' kg';
+  const diffEl = document.getElementById('wc-diff');
+  diffEl.textContent = (diff > 0 ? '+' : '') + diff.toFixed(1) + ' kg';
+  diffEl.style.color = diff < 0 ? '#3a8f67' : diff > 0 ? '#f4a62a' : 'var(--green-dark)';
+}
+
+function startCalculation() {
+  goToStep(5, 'next');
+  const steps = ['cs1','cs2','cs3','cs4'];
+  const titles = ['Tính BMI và chỉ số cơ thể...','Ước tính TDEE...','Xây dựng kế hoạch calo...','Hoàn tất! 🎉'];
+  steps.forEach((id, i) => {
+    setTimeout(() => {
+      document.getElementById(id).classList.add('done');
+      document.getElementById(id).querySelector('.cs-icon').textContent = '✓';
+      if (titles[i]) document.getElementById('calc-title').textContent = titles[i];
+    }, 700 * (i + 1));
+  });
+  setTimeout(() => showResults(), 700 * 5 + 300);
+}
+
+function showResults() {
+  const h = (state.height || 172) / 100;
+  const w = state.weight || 68;
+  const age = state.age || 28;
+  const isMale = state.gender !== 'female';
+
+  // BMR (Mifflin-St Jeor)
+  const bmr = isMale
+    ? 10 * w + 6.25 * (state.height || 172) - 5 * age + 5
+    : 10 * w + 6.25 * (state.height || 172) - 5 * age - 161;
+  const tdee = Math.round(bmr * (state.activityFactor || 1.375));
+  const targetCal = tdee + (state.goalAdj || 0);
+  const bmi = (w / (h * h)).toFixed(1);
+
+  // Macro split based on goal
+  let macros;
+  if (state.goalAdj < 0) macros = {c:40, p:35, f:25};
+  else if (state.goalAdj > 0) macros = {c:45, p:30, f:25};
+  else macros = {c:50, p:25, f:25};
+
+  const protein = Math.round(targetCal * macros.p / 100 / 4);
+  const bmiStatus = bmi < 18.5 ? 'Thiếu cân' : bmi < 25 ? 'Bình thường' : bmi < 30 ? 'Thừa cân' : 'Béo phì';
+  const water = (w * 0.033).toFixed(1);
+
+  document.getElementById('res-bmi').textContent = bmi;
+  document.getElementById('bmi-status').textContent = bmiStatus;
+  document.getElementById('res-tdee').textContent = tdee.toLocaleString();
+  document.getElementById('res-target').textContent = targetCal.toLocaleString();
+  document.getElementById('res-protein').textContent = protein;
+  document.getElementById('res-water').textContent = water;
+  document.getElementById('macro-c').style.width = macros.c + '%';
+  document.getElementById('macro-p').style.width = macros.p + '%';
+  document.getElementById('macro-f').style.width = macros.f + '%';
+  document.getElementById('m-carb').textContent = macros.c + '%';
+  document.getElementById('m-prot').textContent = macros.p + '%';
+  document.getElementById('m-fat').textContent = macros.f + '%';
+  document.getElementById('res-macro-text').textContent = `${macros.c}% C · ${macros.p}% P · ${macros.f}% F`;
+
+  const goalNames = {'-500':'Giảm cân', '0':'Duy trì cân nặng', '500':'Tăng cơ'};
+  const activityNames = {'1.2':'Ít vận động','1.375':'Nhẹ nhàng','1.55':'Vừa phải','1.725':'Năng động','1.9':'Cực kỳ năng động'};
+  document.getElementById('res-tag1').textContent = goalNames[String(state.goalAdj)] || 'Duy trì';
+  document.getElementById('res-tag2').textContent = activityNames[String(state.activityFactor)] || 'Nhẹ nhàng';
+
+  // Switch to result view
+  document.getElementById('step-5-loading').classList.remove('active');
+  const result = document.getElementById('step-5-result');
+  result.classList.add('active');
+  document.getElementById('prog-fill').style.width = '100%';
+}
+
+// Init weight compare
+updateWeightCompare();
+</script>
+</body>
+</html>

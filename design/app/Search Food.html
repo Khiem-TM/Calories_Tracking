@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tracker — Tìm kiếm thực phẩm</title>
+<link rel="stylesheet" href="app.css">
+<style>
+  .search-bar-big {
+    display: flex; align-items: center; gap: 12px;
+    background: #fff; border: 2px solid var(--border); border-radius: 14px;
+    padding: 12px 18px; transition: border .2s; margin-bottom: 24px;
+  }
+  .search-bar-big:focus-within { border-color: var(--green-accent); }
+  .search-bar-big input {
+    flex: 1; border: none; outline: none; font-size: 16px;
+    font-family: 'DM Sans', sans-serif; color: var(--text-body); background: transparent;
+  }
+  .search-bar-big input::placeholder { color: var(--text-muted); }
+  .filter-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  .filter-tab {
+    padding: 7px 16px; border-radius: 100px; font-size: 13px; font-weight: 600;
+    border: 1.5px solid var(--border); background: #fff; cursor: pointer;
+    color: var(--text-body); transition: all .15s;
+  }
+  .filter-tab.active { background: var(--green-cta); color: #fff; border-color: var(--green-cta); }
+  .filter-tab:hover:not(.active) { border-color: var(--green-accent); color: var(--green-dark); }
+  .result-list { display: flex; flex-direction: column; gap: 2px; }
+  .result-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px; background: #fff; border-radius: 12px;
+    cursor: pointer; transition: all .15s; border: 1px solid transparent;
+  }
+  .result-item:hover { border-color: var(--green-accent); box-shadow: 0 2px 12px rgba(30,77,53,0.08); }
+  .result-item.selected { border-color: var(--green-accent); background: #f6fff9; }
+  .food-avatar { width: 44px; height: 44px; border-radius: 12px; background: var(--green-light); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+  .result-info { flex: 1; }
+  .result-name { font-size: 14px; font-weight: 700; color: var(--green-dark); }
+  .result-brand { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .result-macro { font-size: 12px; color: var(--text-muted); display: flex; gap: 12px; margin-top: 4px; }
+  .result-cal { font-size: 15px; font-weight: 700; color: var(--green-dark); text-align: right; }
+  .result-cal-unit { font-size: 10px; color: var(--text-muted); }
+  .add-btn-sm {
+    width: 32px; height: 32px; border-radius: 50%; background: var(--green-accent);
+    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 18px; flex-shrink: 0; transition: background .15s;
+  }
+  .add-btn-sm:hover { background: var(--green-cta); }
+  .section-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-muted); margin: 20px 0 10px; }
+  /* Detail panel */
+  .detail-panel {
+    background: #fff; border-radius: var(--radius); box-shadow: var(--shadow-md);
+    border: 1px solid var(--border); padding: 24px; position: sticky; top: 80px;
+  }
+  .detail-emoji { width: 60px; height: 60px; border-radius: 16px; background: var(--green-light); display: flex; align-items: center; justify-content: center; font-size: 30px; margin-bottom: 16px; }
+  .detail-name { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--green-dark); margin-bottom: 4px; }
+  .portion-row { display: flex; align-items: center; gap: 10px; margin: 16px 0; }
+  .portion-input { width: 70px; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; font-weight: 700; color: var(--green-dark); font-family: 'DM Sans', sans-serif; outline: none; text-align: center; }
+  .portion-input:focus { border-color: var(--green-accent); }
+  .portion-unit { font-size: 14px; color: var(--text-muted); flex: 1; }
+  .nut-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .nut-box { background: var(--bg); border-radius: 10px; padding: 12px; text-align: center; }
+  .nut-val { font-size: 18px; font-weight: 700; color: var(--green-dark); }
+  .nut-lbl { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .vitamin-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .vitamin-row:last-child { border-bottom: none; }
+  .vitamin-name { color: var(--text-muted); }
+  .vitamin-val { font-weight: 700; color: var(--green-dark); }
+  .meal-select { width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text-body); outline: none; margin-bottom: 12px; background: #fff; }
+  .meal-select:focus { border-color: var(--green-accent); }
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <a href="../Landing Page.html" class="sidebar-logo">Tracker<span>.</span></a>
+  <div class="sidebar-section">Menu chính</div>
+  <ul class="sidebar-nav">
+    <li><a href="Dashboard.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="1" y="1" width="7" height="7" rx="2" fill="currentColor"/><rect x="10" y="1" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/><rect x="1" y="10" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/><rect x="10" y="10" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/></svg>Dashboard</a></li>
+    <li><a href="Food Log.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="2" y="3" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 7h8M5 11h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Nhật ký bữa ăn</a></li>
+  </ul>
+  <div class="sidebar-section">Thực phẩm</div>
+  <ul class="sidebar-nav">
+    <li><a href="Search Food.html" class="active"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M13 13l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Tìm & Khám phá</a></li>
+    <li><a href="My Foods.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M9 2l1.8 3.6 4 .6-2.9 2.8.7 4L9 11l-3.6 1.9.7-4L3.2 6.2l4-.6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Thực phẩm của tôi</a></li>
+    <li><a href="AI Scan.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="2" y="4" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="9" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M6 2h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>AI Scan</a></li>
+  </ul>
+  <div class="sidebar-section">Sức khoẻ</div>
+  <ul class="sidebar-nav">
+    <li><a href="Workout.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M2 9h2m10 0h2M4 9a5 5 0 0110 0M4 9a5 5 0 0010 0M6 7v4M12 7v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Tập luyện</a></li>
+    <li><a href="Body Metrics.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M9 2a4 4 0 100 8 4 4 0 000-8zM3 16c0-3 2.7-5 6-5s6 2 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Body Metrics</a></li>
+    <li><a href="Reports.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M3 14l4-5 3 3 4-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Báo cáo</a></li>
+    <li><a href="Chatbot.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M3 5a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H7l-4 3V5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Trợ lý AI</a></li>
+    <li><a href="Blog.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="2" y="3" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 7h8M5 11h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Blog</a></li>
+  </ul>
+  <div class="sidebar-bottom"><a href="Profile.html" style="text-decoration:none"><div class="user-pill"><div class="user-avatar">TM</div><div><div class="user-name">Trần Minh</div><div class="user-plan">Pro Plan</div></div></div></a></div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left"><h1>Tìm kiếm thực phẩm</h1><p>Database 2 triệu+ thực phẩm Việt Nam & quốc tế</p></div>
+    <div class="topbar-right">
+      <a href="Food Log.html" class="btn btn-ghost2 btn-sm">← Nhật ký hôm nay</a>
+    </div>
+  </div>
+
+  <div class="content">
+    <div style="display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start">
+      <div>
+        <!-- Search bar -->
+        <div class="search-bar-big">
+          <svg width="20" height="20" fill="none" viewBox="0 0 20 20"><circle cx="9" cy="9" r="7" stroke="#7a9080" stroke-width="1.5"/><path d="M15 15l3 3" stroke="#7a9080" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <input type="text" id="search-input" placeholder="Tìm thực phẩm, thương hiệu, món ăn..." autofocus oninput="handleSearch(this.value)">
+          <button style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:18px" onclick="document.getElementById('search-input').value='';handleSearch('')">✕</button>
+          <div style="width:1px;height:24px;background:var(--border);margin:0 4px"></div>
+          <button onclick="openCam()" style="display:flex;align-items:center;gap:6px;background:var(--green-light);border:none;border-radius:10px;padding:8px 14px;cursor:pointer;color:var(--green-dark);font-size:13px;font-weight:700;font-family:'DM Sans',sans-serif;white-space:nowrap;transition:background .2s" title="Nhận diện bằng AI Camera">
+            <span>📷</span> AI Camera
+          </button>
+        </div>
+
+        <!-- Filter tabs -->
+        <div class="filter-tabs">
+          <div class="filter-tab active" onclick="setTab(this)">Tất cả</div>
+          <div class="filter-tab" onclick="setTab(this)">Món Việt</div>
+          <div class="filter-tab" onclick="setTab(this)">Thịt & Hải sản</div>
+          <div class="filter-tab" onclick="setTab(this)">Rau & Củ</div>
+          <div class="filter-tab" onclick="setTab(this)">Trái cây</div>
+          <div class="filter-tab" onclick="setTab(this)">Đồ uống</div>
+          <div class="filter-tab" onclick="setTab(this)">Ngũ cốc</div>
+        </div>
+
+        <!-- Recent -->
+        <div id="recent-section">
+          <div class="section-label">Gần đây</div>
+          <div class="result-list" id="recent-list">
+            <div class="result-item" onclick="selectFood(this,'🥣','Yến mạch sữa hạt','Self-made',52,14,8,320)">
+              <div class="food-avatar">🥣</div>
+              <div class="result-info"><div class="result-name">Yến mạch sữa hạt</div><div class="result-brand">Tự làm</div><div class="result-macro"><span>C: 52g</span><span>P: 14g</span><span>F: 8g</span></div></div>
+              <div style="text-align:right"><div class="result-cal">320</div><div class="result-cal-unit">kcal/tô</div></div>
+              <button class="add-btn-sm" onclick="event.stopPropagation();quickAdd('Yến mạch sữa hạt',320)">+</button>
+            </div>
+            <div class="result-item" onclick="selectFood(this,'🍜','Phở bò tái','Phở Thìn',82,38,18,620)">
+              <div class="food-avatar">🍜</div>
+              <div class="result-info"><div class="result-name">Phở bò tái</div><div class="result-brand">Phở Thìn</div><div class="result-macro"><span>C: 82g</span><span>P: 38g</span><span>F: 18g</span></div></div>
+              <div style="text-align:right"><div class="result-cal">620</div><div class="result-cal-unit">kcal/tô</div></div>
+              <button class="add-btn-sm" onclick="event.stopPropagation();quickAdd('Phở bò tái',620)">+</button>
+            </div>
+            <div class="result-item" onclick="selectFood(this,'🍚','Cơm trắng','Generic',45,2.5,0.3,206)">
+              <div class="food-avatar">🍚</div>
+              <div class="result-info"><div class="result-name">Cơm trắng</div><div class="result-brand">Thực phẩm cơ bản</div><div class="result-macro"><span>C: 45g</span><span>P: 2.5g</span><span>F: 0.3g</span></div></div>
+              <div style="text-align:right"><div class="result-cal">206</div><div class="result-cal-unit">kcal/chén</div></div>
+              <button class="add-btn-sm" onclick="event.stopPropagation();quickAdd('Cơm trắng',206)">+</button>
+            </div>
+          </div>
+
+          <div class="section-label" style="margin-top:24px">Phổ biến hôm nay</div>
+          <div class="result-list">
+            <div class="result-item" onclick="selectFood(this,'🥗','Gỏi cuốn tôm thịt','Món Việt',18,12,5,165)">
+              <div class="food-avatar">🥗</div>
+              <div class="result-info"><div class="result-name">Gỏi cuốn tôm thịt</div><div class="result-brand">Món Việt truyền thống</div><div class="result-macro"><span>C: 18g</span><span>P: 12g</span><span>F: 5g</span></div></div>
+              <div style="text-align:right"><div class="result-cal">165</div><div class="result-cal-unit">kcal/cuốn</div></div>
+              <button class="add-btn-sm" onclick="event.stopPropagation();quickAdd('Gỏi cuốn tôm thịt',165)">+</button>
+            </div>
+            <div class="result-item" onclick="selectFood(this,'🍗','Ức gà nướng','Thực phẩm cơ bản',0,31,3.6,165)">
+              <div class="food-avatar">🍗</div>
+              <div class="result-info"><div class="result-name">Ức gà nướng</div><div class="result-brand">Thực phẩm cơ bản</div><div class="result-macro"><span>C: 0g</span><span>P: 31g</span><span>F: 3.6g</span></div></div>
+              <div style="text-align:right"><div class="result-cal">165</div><div class="result-cal-unit">kcal/100g</div></div>
+              <button class="add-btn-sm" onclick="event.stopPropagation();quickAdd('Ức gà nướng',165)">+</button>
+            </div>
+            <div class="result-item" onclick="selectFood(this,'🥚','Trứng gà luộc','Thực phẩm cơ bản',0.6,6.3,5,77)">
+              <div class="food-avatar">🥚</div>
+              <div class="result-info"><div class="result-name">Trứng gà luộc</div><div class="result-brand">Thực phẩm cơ bản</div><div class="result-macro"><span>C: 0.6g</span><span>P: 6.3g</span><span>F: 5g</span></div></div>
+              <div style="text-align:right"><div class="result-cal">77</div><div class="result-cal-unit">kcal/quả</div></div>
+              <button class="add-btn-sm" onclick="event.stopPropagation();quickAdd('Trứng gà luộc',77)">+</button>
+            </div>
+            <div class="result-item" onclick="selectFood(this,'🥦','Bông cải xanh luộc','Rau củ',7,2.8,0.4,55)">
+              <div class="food-avatar">🥦</div>
+              <div class="result-info"><div class="result-name">Bông cải xanh luộc</div><div class="result-brand">Rau củ</div><div class="result-macro"><span>C: 7g</span><span>P: 2.8g</span><span>F: 0.4g</span></div></div>
+              <div style="text-align:right"><div class="result-cal">55</div><div class="result-cal-unit">kcal/100g</div></div>
+              <button class="add-btn-sm" onclick="event.stopPropagation();quickAdd('Bông cải xanh luộc',55)">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detail panel -->
+      <div class="detail-panel" id="detail-panel">
+        <div style="text-align:center;color:var(--text-muted);padding:40px 0" id="empty-detail">
+          <div style="font-size:40px;margin-bottom:12px">🔍</div>
+          <div style="font-size:14px;font-weight:600">Chọn thực phẩm</div>
+          <div style="font-size:12px;margin-top:6px">để xem thông tin dinh dưỡng chi tiết</div>
+        </div>
+        <div id="food-detail" style="display:none">
+          <div class="detail-emoji" id="d-emoji">🥣</div>
+          <div class="detail-name" id="d-name">Yến mạch sữa hạt</div>
+          <div style="font-size:12px;color:var(--text-muted)" id="d-brand">Tự làm</div>
+          <div class="portion-row">
+            <input class="portion-input" type="number" value="1" min="0.5" step="0.5" id="portion" oninput="updateNutrition()">
+            <div class="portion-unit" id="d-unit">tô (320g)</div>
+          </div>
+          <div style="background:var(--green-cta);color:#fff;border-radius:12px;padding:14px;text-align:center;margin-bottom:16px">
+            <div style="font-size:28px;font-weight:700;font-family:'Playfair Display',serif" id="d-cal">320</div>
+            <div style="font-size:11px;opacity:.7">Calories</div>
+          </div>
+          <div class="nut-grid">
+            <div class="nut-box"><div class="nut-val" id="d-carb">52g</div><div class="nut-lbl">Carbs</div></div>
+            <div class="nut-box"><div class="nut-val" id="d-prot">14g</div><div class="nut-lbl">Protein</div></div>
+            <div class="nut-box"><div class="nut-val" id="d-fat">8g</div><div class="nut-lbl">Fat</div></div>
+            <div class="nut-box"><div class="nut-val">4.2g</div><div class="nut-lbl">Chất xơ</div></div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">Vi chất</div>
+          <div class="vitamin-row"><span class="vitamin-name">Vitamin B1</span><span class="vitamin-val">0.4mg</span></div>
+          <div class="vitamin-row"><span class="vitamin-name">Canxi</span><span class="vitamin-val">180mg</span></div>
+          <div class="vitamin-row"><span class="vitamin-name">Sắt</span><span class="vitamin-val">2.1mg</span></div>
+          <div class="vitamin-row"><span class="vitamin-name">Kẽm</span><span class="vitamin-val">1.8mg</span></div>
+          <div style="margin-top:16px">
+            <select class="meal-select" id="meal-target">
+              <option>Bữa sáng</option>
+              <option>Bữa trưa</option>
+              <option>Bữa phụ</option>
+              <option>Bữa tối</option>
+            </select>
+            <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="addToLog()">
+              + Thêm vào nhật ký
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AI CAMERA MODAL -->
+<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;display:none;align-items:center;justify-content:center;padding:20px" id="camera-modal" onclick="if(event.target===this)closeCam()">
+  <div style="background:#fff;border-radius:24px;width:100%;max-width:540px;overflow:hidden">
+    <div style="background:var(--green-cta);padding:24px 28px;color:#fff;position:relative">
+      <button onclick="closeCam()" style="position:absolute;top:16px;right:16px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.15);border:none;cursor:pointer;color:#fff;font-size:16px;display:flex;align-items:center;justify-content:center">✕</button>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.7;margin-bottom:6px">AI Camera</div>
+      <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700">Nhận diện thực phẩm bằng ảnh</div>
+      <div style="font-size:13px;opacity:.7;margin-top:4px">Chụp hoặc tải ảnh bữa ăn — AI sẽ tự phân tích calories & dinh dưỡng</div>
+    </div>
+    <div style="padding:28px">
+      <!-- Upload zone -->
+      <div id="cam-upload-zone" style="border:2px dashed var(--border);border-radius:16px;padding:40px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:20px" onclick="triggerUpload()" ondragover="event.preventDefault();this.style.borderColor='var(--green-accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleDrop(event)">
+        <div style="font-size:48px;margin-bottom:12px">📷</div>
+        <div style="font-size:15px;font-weight:700;color:var(--green-dark);margin-bottom:4px">Kéo thả ảnh vào đây</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px">hoặc</div>
+        <div style="display:flex;gap:10px;justify-content:center">
+          <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();triggerUpload()">📂 Chọn từ máy</button>
+          <button class="btn btn-ghost2 btn-sm" onclick="event.stopPropagation();simulateCapture()">📸 Chụp ảnh</button>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:12px">JPG, PNG tối đa 10MB</div>
+        <input type="file" id="cam-file-input" accept="image/*" style="display:none" onchange="handleFileSelect(this)">
+      </div>
+      <!-- Preview + result (hidden initially) -->
+      <div id="cam-result" style="display:none">
+        <div style="display:grid;grid-template-columns:140px 1fr;gap:16px;align-items:start;margin-bottom:20px">
+          <div style="background:var(--green-light);border-radius:12px;height:120px;display:flex;align-items:center;justify-content:center;font-size:52px" id="cam-preview-img">🥗</div>
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <div style="font-size:15px;font-weight:700;color:var(--green-dark)" id="cam-food-name">Cơm gà xào rau</div>
+              <div class="badge badge-green" style="font-size:10px">95% chắc chắn</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+              <div style="background:var(--bg);border-radius:10px;padding:10px;text-align:center">
+                <div style="font-size:20px;font-weight:700;color:var(--green-dark);font-family:'Playfair Display',serif" id="cam-cal">480</div>
+                <div style="font-size:10px;color:var(--text-muted)">kcal</div>
+              </div>
+              <div style="background:var(--bg);border-radius:10px;padding:10px">
+                <div style="font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between"><span>Carbs</span><span style="font-weight:700;color:var(--green-dark)" id="cam-carb">68g</span></div>
+                <div style="font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between;margin-top:4px"><span>Protein</span><span style="font-weight:700;color:var(--green-dark)" id="cam-prot">32g</span></div>
+                <div style="font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between;margin-top:4px"><span>Fat</span><span style="font-weight:700;color:var(--green-dark)" id="cam-fat">12g</span></div>
+              </div>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted)">Khẩu phần ước tính: 1 đĩa (~350g)</div>
+          </div>
+        </div>
+        <!-- Multiple detections -->
+        <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Các món AI nhận diện trong ảnh</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px" id="cam-items">
+          <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:10px">
+            <div style="font-size:18px">🍚</div>
+            <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--green-dark)">Cơm gạo trắng</div><div style="font-size:11px;color:var(--text-muted)">~200g · 260 kcal</div></div>
+            <input type="checkbox" checked style="accent-color:var(--green-accent);width:16px;height:16px">
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:10px">
+            <div style="font-size:18px">🍗</div>
+            <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--green-dark)">Thịt gà xào</div><div style="font-size:11px;color:var(--text-muted)">~100g · 165 kcal</div></div>
+            <input type="checkbox" checked style="accent-color:var(--green-accent);width:16px;height:16px">
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:10px">
+            <div style="font-size:18px">🥦</div>
+            <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--green-dark)">Rau xào hỗn hợp</div><div style="font-size:11px;color:var(--text-muted)">~80g · 55 kcal</div></div>
+            <input type="checkbox" checked style="accent-color:var(--green-accent);width:16px;height:16px">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-ghost2" style="flex:1;justify-content:center" onclick="retryCamera()">↺ Thử lại</button>
+          <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="addCameraResult()">+ Thêm vào nhật ký</button>
+        </div>
+      </div>
+      <!-- Loading state -->
+      <div id="cam-loading" style="display:none;text-align:center;padding:30px 0">
+        <div style="font-size:40px;margin-bottom:16px">🔍</div>
+        <div style="font-size:15px;font-weight:600;color:var(--green-dark);margin-bottom:6px">AI đang phân tích ảnh...</div>
+        <div style="font-size:13px;color:var(--text-muted)">Nhận diện thực phẩm và tính toán dinh dưỡng</div>
+        <div style="display:flex;gap:6px;justify-content:center;margin-top:16px">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--green-accent);animation:bounce2 .8s ease-in-out infinite"></div>
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--green-accent);animation:bounce2 .8s .15s ease-in-out infinite"></div>
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--green-accent);animation:bounce2 .8s .3s ease-in-out infinite"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<style>
+@keyframes bounce2{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-8px)}}
+</style>
+<!-- Toast -->
+<div id="toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--green-dark);color:#fff;padding:12px 24px;border-radius:100px;font-size:14px;font-weight:600;transition:transform .3s;z-index:999;opacity:0">✓ Đã thêm vào nhật ký</div>
+
+<script>
+let currentFood = null;
+function setTab(el) { document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active')); el.classList.add('active'); }
+function handleSearch(q) { /* mock — keeps all results visible */ }
+function selectFood(el, emoji, name, brand, carb, prot, fat, cal) {
+  document.querySelectorAll('.result-item').forEach(i => i.classList.remove('selected'));
+  el.classList.add('selected');
+  currentFood = {emoji, name, brand, carb, prot, fat, cal};
+  document.getElementById('empty-detail').style.display = 'none';
+  document.getElementById('food-detail').style.display = 'block';
+  document.getElementById('d-emoji').textContent = emoji;
+  document.getElementById('d-name').textContent = name;
+  document.getElementById('d-brand').textContent = brand;
+  document.getElementById('portion').value = 1;
+  updateNutrition();
+}
+function updateNutrition() {
+  if (!currentFood) return;
+  const p = parseFloat(document.getElementById('portion').value) || 1;
+  document.getElementById('d-cal').textContent = Math.round(currentFood.cal * p);
+  document.getElementById('d-carb').textContent = Math.round(currentFood.carb * p * 10)/10 + 'g';
+  document.getElementById('d-prot').textContent = Math.round(currentFood.prot * p * 10)/10 + 'g';
+  document.getElementById('d-fat').textContent = Math.round(currentFood.fat * p * 10)/10 + 'g';
+}
+function quickAdd(name, cal) {
+  showToast('✓ Đã thêm ' + name + ' (' + cal + ' kcal)');
+}
+function addToLog() {
+  if (!currentFood) return;
+  const meal = document.getElementById('meal-target').value;
+  showToast('✓ Đã thêm vào ' + meal);
+  setTimeout(() => location.href = 'Food Log.html', 900);
+}
+function openCam() { document.getElementById('camera-modal').style.display='flex'; }
+function closeCam() { document.getElementById('camera-modal').style.display='none'; resetCamera(); }
+function triggerUpload() { document.getElementById('cam-file-input').click(); }
+function handleFileSelect(input) { if(input.files && input.files[0]) startAnalysis(); }
+function handleDrop(e) { e.preventDefault(); if(e.dataTransfer.files.length) startAnalysis(); }
+function simulateCapture() { startAnalysis(); }
+function startAnalysis() {
+  document.getElementById('cam-upload-zone').style.display='none';
+  document.getElementById('cam-loading').style.display='block';
+  setTimeout(() => {
+    document.getElementById('cam-loading').style.display='none';
+    document.getElementById('cam-result').style.display='block';
+  }, 2000);
+}
+function retryCamera() {
+  document.getElementById('cam-result').style.display='none';
+  document.getElementById('cam-upload-zone').style.display='block';
+}
+function resetCamera() {
+  document.getElementById('cam-upload-zone').style.display='block';
+  document.getElementById('cam-result').style.display='none';
+  document.getElementById('cam-loading').style.display='none';
+}
+function addCameraResult() { closeCam(); showToast('✓ Đã thêm Cơm gà xào rau vào nhật ký (480 kcal)'); }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.opacity = '1';
+  t.style.transform = 'translateX(-50%) translateY(0)';
+  setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(60px)'; }, 2200);
+}
+</script>
+</body>
+</html>

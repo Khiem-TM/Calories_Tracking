@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tracker — Báo cáo & Phân tích</title>
+<link rel="stylesheet" href="app.css">
+<style>
+  .period-tabs { display: flex; gap: 4px; background: var(--bg); border-radius: 12px; padding: 4px; width: fit-content; margin-bottom: 24px; }
+  .period-tab { padding: 7px 20px; border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-muted); transition: all .2s; border: none; background: none; font-family: 'DM Sans',sans-serif; }
+  .period-tab.active { background: #fff; color: var(--green-dark); box-shadow: 0 1px 6px rgba(30,77,53,.1); }
+  /* Line chart mock */
+  .chart-area { position: relative; height: 160px; }
+  .chart-svg { width: 100%; height: 100%; overflow: visible; }
+  .chart-grid { stroke: var(--border); stroke-width: 1; stroke-dasharray: 4 4; }
+  .chart-line { fill: none; stroke: var(--green-accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .chart-line-target { fill: none; stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 6 4; }
+  .chart-area-fill { fill: url(#greenGrad); opacity: .18; }
+  .chart-dot { fill: var(--green-accent); }
+  .chart-dot.today { fill: var(--green-cta); stroke: #fff; stroke-width: 2; }
+  .chart-labels { display: flex; justify-content: space-between; padding: 0 4px; margin-top: 8px; }
+  .chart-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+  .chart-label.today { color: var(--green-cta); font-weight: 700; }
+  /* Weight chart */
+  .weight-point { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+  .weight-dot-wrap { position: relative; width: 100%; display: flex; justify-content: center; }
+  /* Macro doughnut mini */
+  .macro-legend { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+  .macro-legend-row { display: flex; align-items: center; gap: 10px; }
+  .macro-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .macro-legend-name { font-size: 13px; color: var(--text-body); flex: 1; }
+  .macro-legend-pct { font-size: 13px; font-weight: 700; color: var(--green-dark); }
+  .insight-chip { background: var(--green-light); border-radius: 12px; padding: 14px; display: flex; align-items: flex-start; gap: 10px; }
+  .insight-chip.warn { background: #fef3e2; }
+  .insight-chip.good { background: #edfaf2; }
+  .i-icon { font-size: 20px; flex-shrink: 0; }
+  .i-text { font-size: 13px; color: var(--text-body); line-height: 1.5; }
+  .i-text strong { color: var(--green-dark); font-weight: 700; }
+  .achieve-card { background: #fff; border-radius: 12px; border: 1px solid var(--border); padding: 14px; display: flex; align-items: center; gap: 12px; }
+  .achieve-icon { font-size: 28px; width: 48px; height: 48px; border-radius: 12px; background: var(--green-light); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .achieve-name { font-size: 13px; font-weight: 700; color: var(--green-dark); }
+  .achieve-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .achieve-date { font-size: 10px; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <a href="../Landing Page.html" class="sidebar-logo">Tracker<span>.</span></a>
+  <div class="sidebar-section">Menu chính</div>
+  <ul class="sidebar-nav">
+    <li><a href="Dashboard.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="1" y="1" width="7" height="7" rx="2" fill="currentColor"/><rect x="10" y="1" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/><rect x="1" y="10" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/><rect x="10" y="10" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/></svg>Dashboard</a></li>
+    <li><a href="Food Log.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><circle cx="9" cy="9" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M6 9h6M9 6v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Nhật ký ăn uống</a></li>
+    <li><a href="Search Food.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M13 13l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Tìm thực phẩm</a></li>
+    <li><a href="Workout.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M2 9h2m10 0h2M4 9a5 5 0 0110 0M4 9a5 5 0 0010 0M6 7v4M12 7v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Tập luyện</a></li>
+    <li><a href="Body Metrics.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M9 2a4 4 0 100 8 4 4 0 000-8zM3 16c0-3 2.7-5 6-5s6 2 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Body Metrics</a></li>
+    <li><a href="Reports.html" class="active"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M3 14l4-5 3 3 4-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Báo cáo</a></li>
+    <li><a href="Chatbot.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M3 5a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H7l-4 3V5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Trợ lý AI</a></li>
+    <li><a href="Blog.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="2" y="3" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 7h8M5 11h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Blog</a></li>
+  </ul>
+  <div class="sidebar-bottom"><a href="Profile.html" style="text-decoration:none"><div class="user-pill"><div class="user-avatar">TM</div><div><div class="user-name">Trần Minh</div><div class="user-plan">Pro Plan</div></div></div></a></div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left"><h1>Báo cáo & Phân tích</h1><p>Theo dõi xu hướng sức khoẻ của bạn</p></div>
+    <div class="topbar-right">
+      <button class="btn btn-ghost2 btn-sm">Xuất PDF</button>
+      <button class="btn btn-ghost2 btn-sm">Chia sẻ với bác sĩ</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- Period selector -->
+    <div class="period-tabs fade-up">
+      <button class="period-tab" onclick="setPeriod(this)">7 ngày</button>
+      <button class="period-tab active" onclick="setPeriod(this)">30 ngày</button>
+      <button class="period-tab" onclick="setPeriod(this)">3 tháng</button>
+      <button class="period-tab" onclick="setPeriod(this)">1 năm</button>
+    </div>
+
+    <!-- Top KPIs -->
+    <div class="grid-4" style="margin-bottom:20px">
+      <div class="stat-card fade-up" style="animation-delay:.04s">
+        <div class="icon-wrap">📉</div>
+        <div class="stat-val">−1.6<span style="font-size:14px;font-family:'DM Sans',sans-serif;font-weight:400;color:var(--text-muted)">kg</span></div>
+        <div class="stat-label">Giảm cân tháng này</div>
+        <div class="stat-change up" style="margin-top:8px">↓ Đang giảm đều</div>
+      </div>
+      <div class="stat-card fade-up" style="animation-delay:.08s">
+        <div class="icon-wrap">🍽️</div>
+        <div class="stat-val">1,956</div>
+        <div class="stat-label">TB calories/ngày</div>
+        <div class="stat-change up" style="margin-top:8px">↓ Thấp hơn mục tiêu 11%</div>
+      </div>
+      <div class="stat-card fade-up" style="animation-delay:.12s">
+        <div class="icon-wrap">🏋️</div>
+        <div class="stat-val">18</div>
+        <div class="stat-label">Buổi tập tháng này</div>
+        <div class="stat-change up" style="margin-top:8px">↑ +3 so với tháng trước</div>
+      </div>
+      <div class="stat-card fade-up" style="animation-delay:.16s">
+        <div class="icon-wrap">🔥</div>
+        <div class="stat-val">9,720</div>
+        <div class="stat-label">Calories đốt tháng này</div>
+        <div class="stat-change up" style="margin-top:8px">↑ +12% so với tháng trước</div>
+      </div>
+    </div>
+
+    <!-- Calories chart + Macro breakdown -->
+    <div class="grid-2" style="margin-bottom:20px">
+      <div class="card card-pad fade-up" style="animation-delay:.18s">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--green-dark)">Calories theo ngày</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">TB: 1,956 kcal — Mục tiêu: 2,200 kcal</div>
+          </div>
+          <div style="display:flex;gap:16px;align-items:center;font-size:11px">
+            <span style="display:flex;align-items:center;gap:4px;color:var(--green-accent);font-weight:600"><span style="display:inline-block;width:16px;height:2.5px;background:var(--green-accent);border-radius:2px"></span>Thực tế</span>
+            <span style="display:flex;align-items:center;gap:4px;color:var(--text-muted)"><span style="display:inline-block;width:16px;height:2px;background:var(--text-muted);border-radius:2px;opacity:.5"></span>Mục tiêu</span>
+          </div>
+        </div>
+        <div class="chart-area">
+          <svg class="chart-svg" viewBox="0 0 600 160" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="greenGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#3a8f67"/>
+                <stop offset="100%" stop-color="#3a8f67" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <!-- grid lines -->
+            <line x1="0" y1="40" x2="600" y2="40" class="chart-grid"/>
+            <line x1="0" y1="80" x2="600" y2="80" class="chart-grid"/>
+            <line x1="0" y1="120" x2="600" y2="120" class="chart-grid"/>
+            <!-- target line -->
+            <line x1="0" y1="52" x2="600" y2="52" class="chart-line-target"/>
+            <!-- area fill -->
+            <path d="M0,72 L40,65 L80,78 L120,60 L160,82 L200,58 L240,70 L280,50 L320,75 L360,62 L400,78 L440,55 L480,68 L520,60 L560,72 L600,65 L600,160 L0,160 Z" class="chart-area-fill"/>
+            <!-- line -->
+            <path d="M0,72 L40,65 L80,78 L120,60 L160,82 L200,58 L240,70 L280,50 L320,75 L360,62 L400,78 L440,55 L480,68 L520,60 L560,72 L600,65" class="chart-line"/>
+            <!-- dots -->
+            <circle cx="0" cy="72" r="4" class="chart-dot"/>
+            <circle cx="80" cy="78" r="4" class="chart-dot"/>
+            <circle cx="160" cy="82" r="4" class="chart-dot"/>
+            <circle cx="280" cy="50" r="4" class="chart-dot"/>
+            <circle cx="400" cy="78" r="4" class="chart-dot"/>
+            <circle cx="600" cy="65" r="5" class="chart-dot today"/>
+            <!-- y labels -->
+            <text x="608" y="44" font-size="9" fill="#7a9080">2.5k</text>
+            <text x="608" y="84" font-size="9" fill="#7a9080">2.0k</text>
+            <text x="608" y="124" font-size="9" fill="#7a9080">1.5k</text>
+          </svg>
+        </div>
+        <div class="chart-labels">
+          <span class="chart-label">25/3</span>
+          <span class="chart-label">1/4</span>
+          <span class="chart-label">7/4</span>
+          <span class="chart-label">14/4</span>
+          <span class="chart-label">21/4</span>
+          <span class="chart-label today">Hôm nay</span>
+        </div>
+      </div>
+
+      <!-- Macro breakdown -->
+      <div class="card card-pad fade-up" style="animation-delay:.22s">
+        <div style="font-size:14px;font-weight:700;color:var(--green-dark);margin-bottom:20px">Phân bổ dinh dưỡng TB</div>
+        <div style="display:flex;align-items:center;gap:28px">
+          <div style="position:relative;width:130px;height:130px;flex-shrink:0">
+            <svg width="130" height="130" viewBox="0 0 130 130" style="transform:rotate(-90deg)">
+              <circle cx="65" cy="65" r="50" fill="none" stroke="#eef8f2" stroke-width="20"/>
+              <circle cx="65" cy="65" r="50" fill="none" stroke="#3a8f67" stroke-width="20" stroke-dasharray="176 314" stroke-linecap="butt"/>
+              <circle cx="65" cy="65" r="50" fill="none" stroke="#f4a62a" stroke-width="20" stroke-dasharray="88 314" stroke-dashoffset="-176" stroke-linecap="butt" opacity=".85"/>
+              <circle cx="65" cy="65" r="50" fill="none" stroke="#e05c5c" stroke-width="20" stroke-dasharray="50 314" stroke-dashoffset="-264" stroke-linecap="butt" opacity=".75"/>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column">
+              <span style="font-size:11px;color:var(--text-muted);font-weight:600">Macro</span>
+              <span style="font-size:11px;color:var(--text-muted)">TB/ngày</span>
+            </div>
+          </div>
+          <div class="macro-legend">
+            <div class="macro-legend-row">
+              <div class="macro-legend-dot" style="background:#3a8f67"></div>
+              <div class="macro-legend-name">Carbs</div>
+              <div style="text-align:right">
+                <div class="macro-legend-pct">56%</div>
+                <div style="font-size:10px;color:var(--text-muted)">192g TB</div>
+              </div>
+            </div>
+            <div class="macro-legend-row">
+              <div class="macro-legend-dot" style="background:#f4a62a"></div>
+              <div class="macro-legend-name">Protein</div>
+              <div style="text-align:right">
+                <div class="macro-legend-pct">28%</div>
+                <div style="font-size:10px;color:var(--text-muted)">96g TB</div>
+              </div>
+            </div>
+            <div class="macro-legend-row">
+              <div class="macro-legend-dot" style="background:#e05c5c"></div>
+              <div class="macro-legend-name">Fat</div>
+              <div style="text-align:right">
+                <div class="macro-legend-pct">16%</div>
+                <div style="font-size:10px;color:var(--text-muted)">31g TB</div>
+              </div>
+            </div>
+            <div style="height:1px;background:var(--border);margin:4px 0"></div>
+            <div style="font-size:12px;color:var(--text-muted)">Mục tiêu: C50% P30% F20%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weight + Workout trends -->
+    <div class="grid-2" style="margin-bottom:20px">
+      <!-- Weight trend -->
+      <div class="card card-pad fade-up" style="animation-delay:.24s">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--green-dark)">Cân nặng</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Mục tiêu: 65kg · Hiện tại: 68.4kg</div>
+          </div>
+          <div class="badge badge-green">−1.6kg tháng này</div>
+        </div>
+        <div class="chart-area">
+          <svg class="chart-svg" viewBox="0 0 600 140" preserveAspectRatio="none">
+            <defs><linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4a90e2"/><stop offset="100%" stop-color="#4a90e2" stop-opacity="0"/></linearGradient></defs>
+            <line x1="0" y1="35" x2="600" y2="35" class="chart-grid"/>
+            <line x1="0" y1="70" x2="600" y2="70" class="chart-grid"/>
+            <line x1="0" y1="105" x2="600" y2="105" class="chart-grid"/>
+            <!-- target at 65kg -->
+            <line x1="0" y1="120" x2="600" y2="120" class="chart-line-target"/>
+            <path d="M0,30 L80,38 L160,50 L240,60 L320,68 L400,75 L480,82 L600,90 L600,140 L0,140 Z" style="fill:url(#blueGrad);opacity:.12"/>
+            <path d="M0,30 L80,38 L160,50 L240,60 L320,68 L400,75 L480,82 L600,90" fill="none" stroke="#4a90e2" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="0" cy="30" r="4" fill="#4a90e2"/>
+            <circle cx="600" cy="90" r="5" fill="#1e4d35" stroke="#fff" stroke-width="2"/>
+            <text x="0" y="24" font-size="9" fill="#4a90e2" text-anchor="middle">70.0</text>
+            <text x="600" y="84" font-size="9" fill="#1e4d35" text-anchor="middle">68.4</text>
+          </svg>
+        </div>
+        <div class="chart-labels">
+          <span class="chart-label">25/3</span>
+          <span class="chart-label">1/4</span>
+          <span class="chart-label">7/4</span>
+          <span class="chart-label">14/4</span>
+          <span class="chart-label">21/4</span>
+          <span class="chart-label today">Hôm nay</span>
+        </div>
+      </div>
+
+      <!-- Workout frequency -->
+      <div class="card card-pad fade-up" style="animation-delay:.28s">
+        <div style="font-size:14px;font-weight:700;color:var(--green-dark);margin-bottom:20px">Tần suất tập luyện (tuần)</div>
+        <div style="display:flex;align-items:flex-end;gap:10px;height:120px;padding-bottom:4px">
+          <!-- week bars -->
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%">
+            <div style="flex:1;width:100%;background:var(--bg);border-radius:6px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end">
+              <div style="height:60%;background:var(--green-accent);border-radius:6px"></div>
+            </div>
+            <div style="font-size:10px;color:var(--text-muted)">T1</div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%">
+            <div style="flex:1;width:100%;background:var(--bg);border-radius:6px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end">
+              <div style="height:80%;background:var(--green-accent);border-radius:6px"></div>
+            </div>
+            <div style="font-size:10px;color:var(--text-muted)">T2</div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%">
+            <div style="flex:1;width:100%;background:var(--bg);border-radius:6px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end">
+              <div style="height:40%;background:var(--green-accent);border-radius:6px"></div>
+            </div>
+            <div style="font-size:10px;color:var(--text-muted)">T3</div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%">
+            <div style="flex:1;width:100%;background:var(--bg);border-radius:6px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end">
+              <div style="height:100%;background:var(--green-accent);border-radius:6px"></div>
+            </div>
+            <div style="font-size:10px;color:var(--green-cta);font-weight:700">T4</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+          <div style="text-align:center">
+            <div style="font-size:18px;font-weight:700;color:var(--green-dark);font-family:'Playfair Display',serif">4.5</div>
+            <div style="font-size:10px;color:var(--text-muted)">TB buổi/tuần</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:18px;font-weight:700;color:var(--green-dark);font-family:'Playfair Display',serif">52'</div>
+            <div style="font-size:10px;color:var(--text-muted)">TB thời gian</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:18px;font-weight:700;color:var(--green-dark);font-family:'Playfair Display',serif">540</div>
+            <div style="font-size:10px;color:var(--text-muted)">TB kcal đốt</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Insights + Achievements -->
+    <div class="grid-2" style="margin-bottom:0">
+      <div class="card card-pad fade-up" style="animation-delay:.3s">
+        <div style="font-size:14px;font-weight:700;color:var(--green-dark);margin-bottom:16px">Nhận xét AI tháng này</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="insight-chip good">
+            <div class="i-icon">📉</div>
+            <div class="i-text">Cân nặng giảm <strong>1.6kg</strong> đúng nhịp. Ở tốc độ này, bạn sẽ đạt mục tiêu 65kg sau <strong>~5 tuần</strong> nữa.</div>
+          </div>
+          <div class="insight-chip warn">
+            <div class="i-icon">⚠️</div>
+            <div class="i-text">Protein trung bình <strong>96g/ngày</strong>, thấp hơn mục tiêu 125g. Hãy thêm ức gà hoặc trứng vào bữa phụ.</div>
+          </div>
+          <div class="insight-chip good">
+            <div class="i-icon">🏃</div>
+            <div class="i-text">Bạn tập đều đặn <strong>4–5 buổi/tuần</strong>, đây là tần suất lý tưởng cho mục tiêu giảm cân và giữ cơ.</div>
+          </div>
+          <div class="insight-chip warn">
+            <div class="i-icon">💧</div>
+            <div class="i-text">Chỉ <strong>62%</strong> số ngày đạt đủ 8 ly nước. Mất nước có thể ảnh hưởng đến năng lượng tập luyện.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card card-pad fade-up" style="animation-delay:.34s">
+        <div style="font-size:14px;font-weight:700;color:var(--green-dark);margin-bottom:16px">Thành tích đạt được</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="achieve-card">
+            <div class="achieve-icon">🏆</div>
+            <div><div class="achieve-name">Streak 7 ngày</div><div class="achieve-desc">Ghi nhật ký 7 ngày liên tiếp</div></div>
+            <div class="achieve-date">22/04</div>
+          </div>
+          <div class="achieve-card">
+            <div class="achieve-icon">💪</div>
+            <div><div class="achieve-name">Tập luyện 20 buổi</div><div class="achieve-desc">Hoàn thành 20 buổi tập trong tháng</div></div>
+            <div class="achieve-date">20/04</div>
+          </div>
+          <div class="achieve-card">
+            <div class="achieve-icon">⚖️</div>
+            <div><div class="achieve-name">Giảm 1kg đầu tiên</div><div class="achieve-desc">Cột mốc giảm cân quan trọng!</div></div>
+            <div class="achieve-date">10/04</div>
+          </div>
+          <div class="achieve-card">
+            <div class="achieve-icon">🥗</div>
+            <div><div class="achieve-name">Ăn uống lành mạnh</div><div class="achieve-desc">Đạt mục tiêu calories 15 ngày/tháng</div></div>
+            <div class="achieve-date">18/04</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function setPeriod(el) { document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active')); el.classList.add('active'); }
+</script>
+</body>
+</html>

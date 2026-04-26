@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tracker — Nhập chi tiết bữa ăn</title>
+<link rel="stylesheet" href="app.css">
+<style>
+  .meal-type-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 20px; }
+  .meal-type-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 12px 8px; border-radius: 12px; border: 2px solid var(--border);
+    background: #fff; cursor: pointer; transition: all .15s; font-family: 'DM Sans', sans-serif;
+  }
+  .meal-type-btn .icon { font-size: 22px; }
+  .meal-type-btn .label { font-size: 11px; font-weight: 700; color: var(--text-muted); }
+  .meal-type-btn.active { border-color: var(--green-accent); background: #f0fbf5; }
+  .meal-type-btn.active .label { color: var(--green-dark); }
+  .meal-type-btn:hover:not(.active) { border-color: var(--green-accent); }
+
+  .search-inline {
+    display: flex; align-items: center; gap: 10px; border: 1.5px solid var(--border);
+    border-radius: 12px; padding: 10px 14px; background: #fff; margin-bottom: 12px; transition: border .2s;
+  }
+  .search-inline:focus-within { border-color: var(--green-accent); }
+  .search-inline input { flex: 1; border: none; outline: none; font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text-body); }
+  .search-inline input::placeholder { color: var(--text-muted); }
+
+  .suggest-list { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+  .suggest-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border); background: #fff; transition: background .12s; }
+  .suggest-item:last-child { border-bottom: none; }
+  .suggest-item:hover { background: var(--bg); }
+  .si-avatar { width: 36px; height: 36px; border-radius: 9px; background: var(--green-light); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .si-info { flex: 1; }
+  .si-name { font-size: 13px; font-weight: 700; color: var(--green-dark); }
+  .si-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .si-cal { font-size: 13px; font-weight: 700; color: var(--green-dark); }
+  .si-add { width: 28px; height: 28px; border-radius: 50%; background: var(--green-accent); border: none; cursor: pointer; color: #fff; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: background .15s; flex-shrink: 0; }
+  .si-add:hover { background: var(--green-cta); }
+
+  .log-item-row {
+    display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+    background: #fff; border-radius: 12px; margin-bottom: 6px;
+    border: 1px solid rgba(201,228,212,.4); position: relative;
+  }
+  .li-avatar { width: 40px; height: 40px; border-radius: 10px; background: var(--green-light); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .li-info { flex: 1; min-width: 0; }
+  .li-name { font-size: 13px; font-weight: 700; color: var(--green-dark); }
+  .li-macro { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .qty-control { display: flex; align-items: center; gap: 0; background: var(--bg); border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+  .qty-btn { width: 28px; height: 28px; border: none; background: none; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; color: var(--green-dark); transition: background .12s; }
+  .qty-btn:hover { background: var(--green-light); }
+  .qty-val { width: 36px; text-align: center; font-size: 13px; font-weight: 700; color: var(--green-dark); border: none; background: none; outline: none; font-family: 'DM Sans', sans-serif; }
+  .qty-unit { font-size: 10px; color: var(--text-muted); padding: 0 8px 0 2px; }
+  .li-cal { font-size: 14px; font-weight: 700; color: var(--green-dark); width: 60px; text-align: right; }
+  .li-del { width: 28px; height: 28px; border-radius: 7px; background: none; border: none; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; justify-content: center; transition: all .12s; }
+  .li-del:hover { background: #fdf0f0; color: #e05c5c; }
+
+  .section-card { background: #fff; border-radius: var(--radius); border: 1px solid rgba(201,228,212,.4); box-shadow: var(--shadow); margin-bottom: 16px; overflow: hidden; }
+  .section-card-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .section-card-title { font-size: 14px; font-weight: 700; color: var(--green-dark); }
+  .section-card-body { padding: 16px 20px; }
+
+  .img-zone-sm { border: 2px dashed var(--border); border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: all .2s; }
+  .img-zone-sm:hover { border-color: var(--green-accent); background: #f6fff9; }
+
+  .summary-sticky { position: sticky; top: 80px; }
+  .summary-ring { position: relative; display: inline-block; }
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <a href="../Landing Page.html" class="sidebar-logo">Tracker<span>.</span></a>
+  <div class="sidebar-section">Menu chính</div>
+  <ul class="sidebar-nav">
+    <li><a href="Dashboard.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="1" y="1" width="7" height="7" rx="2" fill="currentColor"/><rect x="10" y="1" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/><rect x="1" y="10" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/><rect x="10" y="10" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/></svg>Dashboard</a></li>
+    <li><a href="Food Log.html" class="active"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="2" y="3" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 7h8M5 11h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Nhật ký bữa ăn</a></li>
+  </ul>
+  <div class="sidebar-section">Thực phẩm</div>
+  <ul class="sidebar-nav">
+    <li><a href="Search Food.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M13 13l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Tìm & Khám phá</a></li>
+    <li><a href="My Foods.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M9 2l1.8 3.6 4 .6-2.9 2.8.7 4L9 11l-3.6 1.9.7-4L3.2 6.2l4-.6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Thực phẩm của tôi</a></li>
+    <li><a href="AI Scan.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="2" y="4" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="9" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M6 2h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>AI Scan</a></li>
+  </ul>
+  <div class="sidebar-section">Sức khoẻ</div>
+  <ul class="sidebar-nav">
+    <li><a href="Workout.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M2 9h2m10 0h2M4 9a5 5 0 0110 0M4 9a5 5 0 0010 0M6 7v4M12 7v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Tập luyện</a></li>
+    <li><a href="Reports.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M3 14l4-5 3 3 4-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Báo cáo</a></li>
+    <li><a href="Chatbot.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M3 5a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H7l-4 3V5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Trợ lý AI</a></li>
+  </ul>
+  <div class="sidebar-bottom"><a href="Profile.html" style="text-decoration:none"><div class="user-pill"><div class="user-avatar">TM</div><div><div class="user-name">Trần Minh</div><div class="user-plan">Pro Plan</div></div></div></a></div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1>Nhập bữa ăn</h1>
+      <p>Thứ Bảy, 26/04/2026</p>
+    </div>
+    <div class="topbar-right">
+      <a href="Food Log.html" class="btn btn-ghost2 btn-sm">← Quay lại nhật ký</a>
+      <button class="btn btn-primary btn-sm" onclick="saveMeal()">
+        <svg width="13" height="13" fill="none" viewBox="0 0 13 13"><path d="M2 6.5l3.5 3.5L11 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Lưu bữa ăn
+      </button>
+    </div>
+  </div>
+
+  <div class="content" style="padding-bottom:20px">
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start">
+      <!-- LEFT -->
+      <div>
+        <!-- Loại bữa ăn -->
+        <div class="section-card fade-up">
+          <div class="section-card-header"><span class="section-card-title">Loại bữa ăn</span></div>
+          <div class="section-card-body">
+            <div class="meal-type-grid">
+              <button class="meal-type-btn" onclick="selectMeal(this,'🌅','Sáng')"><span class="icon">🌅</span><span class="label">Bữa sáng</span></button>
+              <button class="meal-type-btn" onclick="selectMeal(this,'☀️','Trưa')"><span class="icon">☀️</span><span class="label">Bữa trưa</span></button>
+              <button class="meal-type-btn active" onclick="selectMeal(this,'🍊','Phụ')"><span class="icon">🍊</span><span class="label">Bữa phụ</span></button>
+              <button class="meal-type-btn" onclick="selectMeal(this,'🌙','Tối')"><span class="icon">🌙</span><span class="label">Bữa tối</span></button>
+              <button class="meal-type-btn" onclick="selectMeal(this,'🌚','Khuya')"><span class="icon">🌚</span><span class="label">Đêm khuya</span></button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div>
+                <label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:6px">Thời gian</label>
+                <input class="input" type="time" value="14:30" style="font-size:14px">
+              </div>
+              <div>
+                <label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:6px">Địa điểm</label>
+                <input class="input" placeholder="VD: Nhà, Văn phòng..." style="font-size:14px">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tìm và thêm thức ăn -->
+        <div class="section-card fade-up" style="animation-delay:.05s">
+          <div class="section-card-header">
+            <span class="section-card-title">Thêm thực phẩm</span>
+            <a href="AI Scan.html" style="display:flex;align-items:center;gap:6px;background:var(--green-light);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--green-dark);text-decoration:none;transition:background .15s" onmouseover="this.style.background='var(--green-accent)';this.style.color='#fff'" onmouseout="this.style.background='var(--green-light)';this.style.color='var(--green-dark)'">
+              <span>📷</span> AI Scan
+            </a>
+          </div>
+          <div class="section-card-body">
+            <div class="search-inline">
+              <svg width="16" height="16" fill="none" viewBox="0 0 16 16"><circle cx="7" cy="7" r="5" stroke="#7a9080" stroke-width="1.4"/><path d="M11 11l3 3" stroke="#7a9080" stroke-width="1.4" stroke-linecap="round"/></svg>
+              <input id="food-search" placeholder="Tìm thực phẩm để thêm..." oninput="filterSuggestions(this.value)" autofocus>
+              <button style="background:none;border:none;cursor:pointer;color:var(--text-muted)" onclick="document.getElementById('food-search').value='';filterSuggestions('')">✕</button>
+            </div>
+
+            <div class="suggest-list" id="suggest-list">
+              <div class="suggest-item" onclick="addFoodItem('🥣','Yến mạch sữa hạt','1 tô · 320g',52,14,8,320)">
+                <div class="si-avatar">🥣</div>
+                <div class="si-info"><div class="si-name">Yến mạch sữa hạt</div><div class="si-meta">Tự làm · C:52g P:14g F:8g</div></div>
+                <div class="si-cal">320 kcal</div>
+                <button class="si-add" onclick="event.stopPropagation();addFoodItem('🥣','Yến mạch sữa hạt','1 tô · 320g',52,14,8,320)">+</button>
+              </div>
+              <div class="suggest-item" onclick="addFoodItem('🍌','Chuối vừa','1 quả · 118g',26,1.3,0.4,100)">
+                <div class="si-avatar">🍌</div>
+                <div class="si-info"><div class="si-name">Chuối vừa</div><div class="si-meta">Trái cây · C:26g P:1.3g F:0.4g</div></div>
+                <div class="si-cal">100 kcal</div>
+                <button class="si-add" onclick="event.stopPropagation();addFoodItem('🍌','Chuối vừa','1 quả · 118g',26,1.3,0.4,100)">+</button>
+              </div>
+              <div class="suggest-item" onclick="addFoodItem('🍎','Táo đỏ','1 quả · 180g',24,0.5,0.3,95)">
+                <div class="si-avatar">🍎</div>
+                <div class="si-info"><div class="si-name">Táo đỏ</div><div class="si-meta">Trái cây · C:24g P:0.5g F:0.3g</div></div>
+                <div class="si-cal">95 kcal</div>
+                <button class="si-add" onclick="event.stopPropagation();addFoodItem('🍎','Táo đỏ','1 quả · 180g',24,0.5,0.3,95)">+</button>
+              </div>
+              <div class="suggest-item" onclick="addFoodItem('🥛','Sữa tươi không đường','1 hộp · 200ml',9.4,6.8,3.4,96)">
+                <div class="si-avatar">🥛</div>
+                <div class="si-info"><div class="si-name">Sữa tươi không đường</div><div class="si-meta">Đồ uống · C:9.4g P:6.8g F:3.4g</div></div>
+                <div class="si-cal">96 kcal</div>
+                <button class="si-add" onclick="event.stopPropagation();addFoodItem('🥛','Sữa tươi không đường','1 hộp · 200ml',9.4,6.8,3.4,96)">+</button>
+              </div>
+              <div class="suggest-item" onclick="addFoodItem('🥜','Hạt hạnh nhân rang','30g',5.4,5.1,13.5,158)">
+                <div class="si-avatar">🥜</div>
+                <div class="si-info"><div class="si-name">Hạt hạnh nhân rang</div><div class="si-meta">Hạt · C:5.4g P:5.1g F:13.5g</div></div>
+                <div class="si-cal">158 kcal</div>
+                <button class="si-add" onclick="event.stopPropagation();addFoodItem('🥜','Hạt hạnh nhân rang','30g',5.4,5.1,13.5,158)">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Danh sách đã chọn -->
+        <div class="section-card fade-up" style="animation-delay:.1s">
+          <div class="section-card-header">
+            <span class="section-card-title">Thực phẩm trong bữa ăn</span>
+            <span style="font-size:12px;color:var(--text-muted)" id="item-count">2 món</span>
+          </div>
+          <div class="section-card-body" id="log-items">
+            <div class="log-item-row" id="item-0">
+              <div class="li-avatar">🍊</div>
+              <div class="li-info">
+                <div class="li-name">Cam tươi</div>
+                <div class="li-macro">C:28g · P:2.4g · F:0.4g</div>
+              </div>
+              <div class="qty-control">
+                <button class="qty-btn" onclick="changeQty('item-0',-1)">−</button>
+                <input class="qty-val" type="number" value="2" min="1" id="qty-item-0" oninput="recalcItem('item-0',120)">
+                <span class="qty-unit">quả</span>
+                <button class="qty-btn" onclick="changeQty('item-0',1)">+</button>
+              </div>
+              <div class="li-cal" id="cal-item-0">120 kcal</div>
+              <button class="li-del" onclick="removeItem('item-0')">
+                <svg width="14" height="14" fill="none" viewBox="0 0 14 14"><path d="M2 4h10M5 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M6 7v3M8 7v3M3 4l.8 7.2a1 1 0 001 .8h4.4a1 1 0 001-.8L11 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+            <div class="log-item-row" id="item-1">
+              <div class="li-avatar">🥤</div>
+              <div class="li-info">
+                <div class="li-name">Nước ép táo</div>
+                <div class="li-macro">C:18g · P:0.2g · F:0.1g</div>
+              </div>
+              <div class="qty-control">
+                <button class="qty-btn" onclick="changeQty('item-1',-1)">−</button>
+                <input class="qty-val" type="number" value="1" min="1" id="qty-item-1" oninput="recalcItem('item-1',76)">
+                <span class="qty-unit">ly</span>
+                <button class="qty-btn" onclick="changeQty('item-1',1)">+</button>
+              </div>
+              <div class="li-cal" id="cal-item-1">76 kcal</div>
+              <button class="li-del" onclick="removeItem('item-1')">
+                <svg width="14" height="14" fill="none" viewBox="0 0 14 14"><path d="M2 4h10M5 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M6 7v3M8 7v3M3 4l.8 7.2a1 1 0 001 .8h4.4a1 1 0 001-.8L11 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+            <div id="empty-log" style="display:none;text-align:center;padding:24px;color:var(--text-muted);font-size:13px">
+              Chưa có thực phẩm nào. Tìm và thêm ở trên.
+            </div>
+          </div>
+        </div>
+
+        <!-- Ghi chú + Ảnh bữa ăn -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="section-card fade-up" style="animation-delay:.15s">
+            <div class="section-card-header"><span class="section-card-title">Ghi chú</span></div>
+            <div class="section-card-body">
+              <textarea class="input" rows="4" placeholder="Ghi chú về bữa ăn, cảm giác đói/no, hoàn cảnh..." style="resize:none;font-size:13px"></textarea>
+            </div>
+          </div>
+          <div class="section-card fade-up" style="animation-delay:.18s">
+            <div class="section-card-header"><span class="section-card-title">Ảnh bữa ăn</span></div>
+            <div class="section-card-body">
+              <div class="img-zone-sm" onclick="document.getElementById('meal-img').click()">
+                <div style="font-size:28px;margin-bottom:8px">📸</div>
+                <div style="font-size:13px;font-weight:600;color:var(--green-dark);margin-bottom:2px">Chụp hoặc tải ảnh</div>
+                <div style="font-size:11px;color:var(--text-muted)">JPG, PNG tối đa 10MB</div>
+              </div>
+              <input type="file" id="meal-img" accept="image/*" style="display:none">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Tổng kết bữa ăn -->
+      <div class="summary-sticky">
+        <div class="card fade-up" style="margin-bottom:16px">
+          <div class="card-header"><span class="card-title">Tổng bữa ăn này</span></div>
+          <div class="card-pad">
+            <div style="text-align:center;margin-bottom:16px">
+              <div style="font-family:'Playfair Display',serif;font-size:36px;font-weight:700;color:var(--green-dark);line-height:1" id="total-cal">196</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">kcal · <span id="meal-name-display">Bữa phụ 🍊</span></div>
+            </div>
+            <div style="height:8px;border-radius:100px;background:var(--bg);overflow:hidden;margin-bottom:12px;display:flex;gap:2px">
+              <div style="height:100%;border-radius:100px;background:#3a8f67;width:60%"></div>
+              <div style="height:100%;border-radius:100px;background:#f4a62a;width:10%"></div>
+              <div style="height:100%;border-radius:100px;background:#4a90e2;width:5%"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:16px">
+              <span style="color:var(--text-muted)">Carbs</span><span style="font-weight:700;color:var(--green-dark)" id="sum-carb">47g</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px">
+              <span style="color:var(--text-muted)">Protein</span><span style="font-weight:700;color:var(--green-dark)" id="sum-prot">2.6g</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:16px">
+              <span style="color:var(--text-muted)">Fat</span><span style="font-weight:700;color:var(--green-dark)" id="sum-fat">0.5g</span>
+            </div>
+            <div style="height:1px;background:var(--border);margin-bottom:14px"></div>
+            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:10px">So với mục tiêu ngày</div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px">
+              <span style="color:var(--text-muted)">Đã dùng hôm nay</span><span style="font-weight:700;color:var(--green-dark)">1,840 kcal</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+              <span style="color:var(--text-muted)">Mục tiêu</span><span style="font-weight:700;color:var(--green-dark)">2,200 kcal</span>
+            </div>
+            <div class="prog-bar" style="margin-top:6px"><div class="prog-fill" style="width:84%"></div></div>
+            <div style="font-size:11px;color:var(--green-accent);font-weight:700;margin-top:6px;text-align:right">Còn 360 kcal</div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:13px" onclick="saveMeal()">
+          <svg width="14" height="14" fill="none" viewBox="0 0 14 14"><path d="M2 7l4 4 6-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Lưu bữa ăn
+        </button>
+        <div style="margin-top:10px;text-align:center">
+          <button class="btn btn-ghost2 btn-sm" style="color:#e05c5c;border-color:#fcc" onclick="if(confirm('Xoá toàn bộ nhật ký bữa ăn này?'))location.href='Food Log.html'">Xoá nhật ký này</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--green-dark);color:#fff;padding:12px 24px;border-radius:100px;font-size:14px;font-weight:600;transition:transform .3s,opacity .3s;z-index:999;opacity:0"></div>
+
+<script>
+let itemCount = 2;
+const items = {
+  'item-0': {cal: 120, basePerUnit: 60},
+  'item-1': {cal: 76, basePerUnit: 76}
+};
+
+function selectMeal(btn, icon, name) {
+  document.querySelectorAll('.meal-type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('meal-name-display').textContent = name + ' ' + icon;
+}
+
+function filterSuggestions(q) {
+  document.querySelectorAll('.suggest-item').forEach(item => {
+    const name = item.querySelector('.si-name').textContent.toLowerCase();
+    item.style.display = q === '' || name.includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+
+let newItemIndex = 10;
+function addFoodItem(emoji, name, meta, carb, prot, fat, cal) {
+  const id = 'item-' + newItemIndex++;
+  items[id] = {cal, basePerUnit: cal};
+  const row = document.createElement('div');
+  row.className = 'log-item-row'; row.id = id;
+  row.innerHTML = `<div class="li-avatar">${emoji}</div>
+    <div class="li-info"><div class="li-name">${name}</div><div class="li-macro">C:${carb}g · P:${prot}g · F:${fat}g</div></div>
+    <div class="qty-control">
+      <button class="qty-btn" onclick="changeQty('${id}',-1)">−</button>
+      <input class="qty-val" type="number" value="1" min="1" id="qty-${id}" oninput="recalcItem('${id}',${cal})">
+      <span class="qty-unit">phần</span>
+      <button class="qty-btn" onclick="changeQty('${id}',1)">+</button>
+    </div>
+    <div class="li-cal" id="cal-${id}">${cal} kcal</div>
+    <button class="li-del" onclick="removeItem('${id}')">
+      <svg width="14" height="14" fill="none" viewBox="0 0 14 14"><path d="M2 4h10M5 4V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V4M6 7v3M8 7v3M3 4l.8 7.2a1 1 0 001 .8h4.4a1 1 0 001-.8L11 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>`;
+  document.getElementById('log-items').insertBefore(row, document.getElementById('empty-log'));
+  document.getElementById('empty-log').style.display = 'none';
+  updateCount(); updateTotal(); showToast('+ Đã thêm ' + name);
+}
+
+function changeQty(id, delta) {
+  const input = document.getElementById('qty-' + id);
+  const newVal = Math.max(1, (parseFloat(input.value) || 1) + delta);
+  input.value = newVal;
+  recalcItem(id, items[id].basePerUnit);
+}
+
+function recalcItem(id, baseCalPerUnit) {
+  const qty = parseFloat(document.getElementById('qty-' + id).value) || 1;
+  const cal = Math.round(baseCalPerUnit * qty);
+  items[id].cal = cal;
+  document.getElementById('cal-' + id).textContent = cal + ' kcal';
+  updateTotal();
+}
+
+function removeItem(id) {
+  const el = document.getElementById(id);
+  el.style.opacity = '0'; el.style.transition = 'opacity .2s';
+  setTimeout(() => { el.remove(); delete items[id]; updateCount(); updateTotal(); }, 200);
+}
+
+function updateCount() {
+  const cnt = document.querySelectorAll('.log-item-row').length;
+  document.getElementById('item-count').textContent = cnt + ' món';
+  document.getElementById('empty-log').style.display = cnt === 0 ? 'block' : 'none';
+}
+
+function updateTotal() {
+  const total = Object.values(items).reduce((s, i) => s + (i.cal || 0), 0);
+  document.getElementById('total-cal').textContent = total;
+}
+
+function saveMeal() {
+  showToast('✓ Đã lưu bữa ăn thành công!');
+  setTimeout(() => location.href = 'Food Log.html', 900);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)';
+  setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(60px)'; }, 2200);
+}
+</script>
+</body>
+</html>

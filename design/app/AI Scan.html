@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tracker — AI Scan thực phẩm</title>
+<link rel="stylesheet" href="app.css">
+<style>
+  .scan-stage {
+    display: flex; flex-direction: column; align-items: center;
+    min-height: calc(100vh - 60px); padding: 32px;
+  }
+  .scan-hero {
+    width: 100%; max-width: 820px;
+    background: linear-gradient(135deg, var(--green-cta) 0%, var(--green-mid) 100%);
+    border-radius: 20px; padding: 28px 36px; color: #fff;
+    display: flex; align-items: center; gap: 24px; margin-bottom: 28px;
+    position: relative; overflow: hidden;
+  }
+  .scan-hero::after { content: ''; position: absolute; right: -60px; top: -60px; width: 240px; height: 240px; border-radius: 50%; background: rgba(255,255,255,.06); }
+  .scan-hero-icon { font-size: 52px; flex-shrink: 0; position: relative; z-index: 1; }
+  .scan-hero h2 { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; margin-bottom: 4px; position: relative; z-index: 1; }
+  .scan-hero p { font-size: 13px; opacity: .75; position: relative; z-index: 1; }
+
+  .scan-card { background: #fff; border-radius: 20px; box-shadow: var(--shadow-md); border: 1px solid rgba(201,228,212,.4); width: 100%; max-width: 820px; overflow: hidden; }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 2.5px dashed var(--border); border-radius: 16px; padding: 48px 32px;
+    text-align: center; cursor: pointer; transition: all .25s; margin: 24px;
+    position: relative;
+  }
+  .upload-zone:hover { border-color: var(--green-accent); background: #f5fdf7; }
+  .upload-zone.drag-over { border-color: var(--green-accent); background: #f0fbf5; transform: scale(1.01); }
+  .upload-camera-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+  /* Loading state */
+  .loading-state { padding: 52px 32px; text-align: center; }
+  .scan-dots { display: flex; gap: 8px; justify-content: center; margin-top: 20px; }
+  .scan-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green-accent); animation: scanBounce .7s ease-in-out infinite; }
+  @keyframes scanBounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-10px); } }
+  .scan-bar { height: 4px; background: var(--bg); border-radius: 100px; overflow: hidden; margin: 16px auto; max-width: 280px; }
+  .scan-progress { height: 100%; background: linear-gradient(90deg, var(--green-accent), #52d68e); border-radius: 100px; animation: scanProg 2s ease-in-out forwards; }
+  @keyframes scanProg { from { width: 0% } to { width: 90% } }
+
+  /* Result state */
+  .result-image-preview {
+    width: 100%; height: 220px; background: linear-gradient(135deg, #d4eddf 0%, #b8dfc9 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 88px; position: relative; overflow: hidden;
+  }
+  .result-image-preview::after {
+    content: 'AI đã phân tích xong'; position: absolute; bottom: 12px;
+    left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,.5); color: #fff;
+    padding: 4px 14px; border-radius: 100px; font-size: 11px; font-weight: 700;
+    font-family: 'DM Sans', sans-serif; white-space: nowrap;
+  }
+  .result-summary { display: flex; gap: 12px; padding: 20px 24px 0; }
+  .result-sum-box { flex: 1; background: var(--bg); border-radius: 12px; padding: 14px; text-align: center; }
+  .result-sum-val { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--green-dark); line-height: 1; }
+  .result-sum-lbl { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+
+  .detected-item {
+    display: flex; align-items: center; gap: 12px; padding: 14px 24px;
+    border-bottom: 1px solid var(--border); transition: background .12s;
+  }
+  .detected-item:last-child { border-bottom: none; }
+  .detected-item:hover { background: var(--bg); }
+  .di-check { width: 20px; height: 20px; accent-color: var(--green-accent); cursor: pointer; flex-shrink: 0; }
+  .di-avatar { width: 42px; height: 42px; border-radius: 11px; background: var(--green-light); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+  .di-info { flex: 1; }
+  .di-name { font-size: 14px; font-weight: 700; color: var(--green-dark); }
+  .di-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .di-confidence { display: flex; align-items: center; gap: 6px; }
+  .conf-bar { width: 60px; height: 5px; background: var(--bg); border-radius: 100px; overflow: hidden; }
+  .conf-fill { height: 100%; border-radius: 100px; }
+  .conf-pct { font-size: 11px; font-weight: 700; color: var(--text-muted); }
+  .di-cal { font-size: 15px; font-weight: 700; color: var(--green-dark); text-align: right; min-width: 70px; }
+  .di-cal-unit { font-size: 10px; color: var(--text-muted); text-align: right; }
+  .di-edit { background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; border-radius: 6px; transition: all .12s; font-size: 13px; }
+  .di-edit:hover { background: var(--green-light); color: var(--green-dark); }
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <a href="../Landing Page.html" class="sidebar-logo">Tracker<span>.</span></a>
+  <div class="sidebar-section">Menu chính</div>
+  <ul class="sidebar-nav">
+    <li><a href="Dashboard.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="1" y="1" width="7" height="7" rx="2" fill="currentColor"/><rect x="10" y="1" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/><rect x="1" y="10" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/><rect x="10" y="10" width="7" height="7" rx="2" fill="currentColor" opacity=".5"/></svg>Dashboard</a></li>
+    <li><a href="Food Log.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="2" y="3" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 7h8M5 11h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Nhật ký bữa ăn</a></li>
+  </ul>
+  <div class="sidebar-section">Thực phẩm</div>
+  <ul class="sidebar-nav">
+    <li><a href="Search Food.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M13 13l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Tìm & Khám phá</a></li>
+    <li><a href="My Foods.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M9 2l1.8 3.6 4 .6-2.9 2.8.7 4L9 11l-3.6 1.9.7-4L3.2 6.2l4-.6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Thực phẩm của tôi</a></li>
+    <li><a href="AI Scan.html" class="active"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><rect x="2" y="4" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="9" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M6 2h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>AI Scan</a></li>
+  </ul>
+  <div class="sidebar-section">Sức khoẻ</div>
+  <ul class="sidebar-nav">
+    <li><a href="Workout.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M2 9h2m10 0h2M4 9a5 5 0 0110 0M4 9a5 5 0 0010 0M6 7v4M12 7v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Tập luyện</a></li>
+    <li><a href="Reports.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M3 14l4-5 3 3 4-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Báo cáo</a></li>
+    <li><a href="Chatbot.html"><svg class="nav-icon" fill="none" viewBox="0 0 18 18"><path d="M3 5a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H7l-4 3V5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Trợ lý AI</a></li>
+  </ul>
+  <div class="sidebar-bottom"><a href="Profile.html" style="text-decoration:none"><div class="user-pill"><div class="user-avatar">TM</div><div><div class="user-name">Trần Minh</div><div class="user-plan">Pro Plan</div></div></div></a></div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1>AI Scan</h1>
+      <p>Nhận diện thực phẩm bằng ảnh · Powered by AI</p>
+    </div>
+    <div class="topbar-right">
+      <a href="Food Log.html" class="btn btn-ghost2 btn-sm">← Nhật ký hôm nay</a>
+    </div>
+  </div>
+
+  <div class="scan-stage">
+    <div class="scan-hero fade-up">
+      <div class="scan-hero-icon">🔍</div>
+      <div>
+        <h2>Chụp ảnh — AI nhận diện ngay</h2>
+        <p>Chụp hoặc tải ảnh bữa ăn. AI sẽ tự nhận diện từng món và tính calo chỉ trong vài giây.</p>
+      </div>
+      <div style="margin-left:auto;text-align:right;flex-shrink:0;position:relative;z-index:1">
+        <div style="font-size:11px;opacity:.65;margin-bottom:4px">Độ chính xác trung bình</div>
+        <div style="font-family:'Playfair Display',serif;font-size:32px;font-weight:700;line-height:1">91%</div>
+      </div>
+    </div>
+
+    <div class="scan-card fade-up" style="animation-delay:.07s">
+      <!-- STATE 1: Upload -->
+      <div id="state-upload">
+        <div style="padding:20px 24px 0;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:700;color:var(--green-dark)">Tải ảnh lên</div>
+          <div style="display:flex;gap:6px">
+            <span class="badge badge-green">📷 Ảnh thực phẩm</span>
+            <span class="badge badge-orange">🍽️ Đĩa đồ ăn</span>
+          </div>
+        </div>
+        <div class="upload-zone" id="upload-zone"
+          onclick="document.getElementById('file-inp').click()"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="handleDrop(event)">
+          <div style="font-size:64px;margin-bottom:16px">🍽️</div>
+          <div style="font-size:18px;font-weight:700;color:var(--green-dark);margin-bottom:6px">Kéo & thả ảnh vào đây</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-bottom:24px">Hỗ trợ JPG, PNG, HEIC · tối đa 20MB</div>
+          <div class="upload-camera-row" onclick="event.stopPropagation()">
+            <button class="btn btn-primary" onclick="startAnalysis()">
+              <svg width="15" height="15" fill="none" viewBox="0 0 15 15"><rect x="1" y="3" width="13" height="9" rx="2" stroke="currentColor" stroke-width="1.3"/><circle cx="7.5" cy="7.5" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M5 1h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+              Chụp ảnh
+            </button>
+            <button class="btn btn-ghost2" onclick="startAnalysis()">
+              <svg width="15" height="15" fill="none" viewBox="0 0 15 15"><rect x="1" y="1" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M4 8l2.5 2.5L11 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Chọn từ thư viện
+            </button>
+          </div>
+          <input type="file" id="file-inp" accept="image/*" style="display:none" onchange="startAnalysis()">
+        </div>
+        <!-- Recent scans -->
+        <div style="padding:0 24px 24px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:12px">Lần quét gần đây</div>
+          <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px">
+            <div style="flex-shrink:0;width:90px;cursor:pointer" onclick="loadRecentScan()">
+              <div style="width:90px;height:72px;background:var(--green-light);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:6px;border:2px solid transparent;transition:border .15s" onmouseover="this.style.borderColor='var(--green-accent)'" onmouseout="this.style.borderColor='transparent'">🍚</div>
+              <div style="font-size:11px;font-weight:600;color:var(--green-dark);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Cơm gà xào</div>
+              <div style="font-size:10px;color:var(--text-muted);text-align:center">480 kcal · 2h ago</div>
+            </div>
+            <div style="flex-shrink:0;width:90px">
+              <div style="width:90px;height:72px;background:#fef3e2;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:6px">🥣</div>
+              <div style="font-size:11px;font-weight:600;color:var(--green-dark);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Yến mạch</div>
+              <div style="font-size:10px;color:var(--text-muted);text-align:center">320 kcal · hôm qua</div>
+            </div>
+            <div style="flex-shrink:0;width:90px">
+              <div style="width:90px;height:72px;background:#f0f4ff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:6px">🍜</div>
+              <div style="font-size:11px;font-weight:600;color:var(--green-dark);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Phở bò</div>
+              <div style="font-size:10px;color:var(--text-muted);text-align:center">620 kcal · 2 ngày</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STATE 2: Loading / Analyzing -->
+      <div id="state-loading" style="display:none" class="loading-state">
+        <div style="width:80px;height:80px;border-radius:50%;background:var(--green-light);display:flex;align-items:center;justify-content:center;font-size:40px;margin:0 auto 20px;animation:pulse 1.5s ease-in-out infinite">🔍</div>
+        <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--green-dark);margin-bottom:6px" id="loading-text">Đang nhận diện thực phẩm...</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px" id="loading-sub">AI đang phân tích hình ảnh của bạn</div>
+        <div class="scan-bar"><div class="scan-progress" id="scan-prog"></div></div>
+        <div class="scan-dots">
+          <div class="scan-dot"></div>
+          <div class="scan-dot" style="animation-delay:.15s"></div>
+          <div class="scan-dot" style="animation-delay:.3s"></div>
+        </div>
+        <div style="margin-top:28px;display:flex;gap:16px;justify-content:center;font-size:12px;color:var(--text-muted)">
+          <span>✓ Phát hiện đĩa thức ăn</span>
+          <span id="step2" style="opacity:.3">⏳ Nhận diện từng món</span>
+          <span id="step3" style="opacity:.3">⏳ Ước lượng calo</span>
+        </div>
+      </div>
+
+      <!-- STATE 3: Results -->
+      <div id="state-result" style="display:none">
+        <div class="result-image-preview">🍱</div>
+
+        <div style="padding:20px 24px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+          <div>
+            <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--green-dark)">Cơm hộp văn phòng</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Nhận diện 4 món trong ảnh · Độ tin cậy 93%</div>
+          </div>
+          <button class="btn btn-ghost2 btn-sm" onclick="resetScan()">↺ Quét lại</button>
+        </div>
+
+        <div class="result-summary">
+          <div class="result-sum-box">
+            <div class="result-sum-val" id="res-cal">648</div>
+            <div class="result-sum-lbl">kcal tổng</div>
+          </div>
+          <div class="result-sum-box">
+            <div class="result-sum-val">86g</div>
+            <div class="result-sum-lbl">Carbs</div>
+          </div>
+          <div class="result-sum-box">
+            <div class="result-sum-val">34g</div>
+            <div class="result-sum-lbl">Protein</div>
+          </div>
+          <div class="result-sum-box">
+            <div class="result-sum-val">16g</div>
+            <div class="result-sum-lbl">Fat</div>
+          </div>
+        </div>
+
+        <div style="padding:16px 24px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted)">
+          Chọn món muốn thêm vào nhật ký
+        </div>
+
+        <div id="detected-items">
+          <div class="detected-item">
+            <input type="checkbox" class="di-check" checked onchange="updateResTotal()">
+            <div class="di-avatar">🍚</div>
+            <div class="di-info">
+              <div class="di-name">Cơm gạo trắng</div>
+              <div class="di-sub">~200g · 1 phần</div>
+              <div class="di-confidence" style="margin-top:4px">
+                <div class="conf-bar"><div class="conf-fill" style="width:96%;background:#3a8f67"></div></div>
+                <span class="conf-pct">96%</span>
+              </div>
+            </div>
+            <div>
+              <div class="di-cal">260</div>
+              <div class="di-cal-unit">kcal</div>
+            </div>
+            <button class="di-edit" title="Chỉnh sửa">✏️</button>
+          </div>
+          <div class="detected-item">
+            <input type="checkbox" class="di-check" checked onchange="updateResTotal()">
+            <div class="di-avatar">🍗</div>
+            <div class="di-info">
+              <div class="di-name">Thịt gà kho gừng</div>
+              <div class="di-sub">~120g · 1 phần</div>
+              <div class="di-confidence" style="margin-top:4px">
+                <div class="conf-bar"><div class="conf-fill" style="width:91%;background:#3a8f67"></div></div>
+                <span class="conf-pct">91%</span>
+              </div>
+            </div>
+            <div>
+              <div class="di-cal">218</div>
+              <div class="di-cal-unit">kcal</div>
+            </div>
+            <button class="di-edit" title="Chỉnh sửa">✏️</button>
+          </div>
+          <div class="detected-item">
+            <input type="checkbox" class="di-check" checked onchange="updateResTotal()">
+            <div class="di-avatar">🥦</div>
+            <div class="di-info">
+              <div class="di-name">Rau cải xào tỏi</div>
+              <div class="di-sub">~80g · 1 phần</div>
+              <div class="di-confidence" style="margin-top:4px">
+                <div class="conf-bar"><div class="conf-fill" style="width:88%;background:#3a8f67"></div></div>
+                <span class="conf-pct">88%</span>
+              </div>
+            </div>
+            <div>
+              <div class="di-cal">72</div>
+              <div class="di-cal-unit">kcal</div>
+            </div>
+            <button class="di-edit">✏️</button>
+          </div>
+          <div class="detected-item">
+            <input type="checkbox" class="di-check" onchange="updateResTotal()">
+            <div class="di-avatar">🥚</div>
+            <div class="di-info">
+              <div class="di-name">Trứng chiên</div>
+              <div class="di-sub">~50g · ½ quả</div>
+              <div class="di-confidence" style="margin-top:4px">
+                <div class="conf-bar"><div class="conf-fill" style="width:74%;background:#f4a62a"></div></div>
+                <span class="conf-pct" style="color:#c47a00">74%</span>
+              </div>
+            </div>
+            <div>
+              <div class="di-cal">98</div>
+              <div class="di-cal-unit">kcal</div>
+            </div>
+            <button class="di-edit">✏️</button>
+          </div>
+        </div>
+
+        <div style="padding:20px 24px 24px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:2px">Calo từ các món đã chọn</div>
+            <div style="font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--green-dark);line-height:1" id="selected-cal">550</div>
+            <div style="font-size:11px;color:var(--text-muted)">kcal · 3 món</div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Thêm vào bữa</label>
+              <select class="input" style="padding:8px 12px;font-size:13px;min-width:140px">
+                <option>🌅 Bữa sáng</option>
+                <option>☀️ Bữa trưa</option>
+                <option selected>🍊 Bữa phụ</option>
+                <option>🌙 Bữa tối</option>
+              </select>
+            </div>
+            <div style="display:flex;flex-direction:column;justify-content:flex-end">
+              <button class="btn btn-primary" onclick="addToLog()">
+                + Thêm vào nhật ký hôm nay
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tips -->
+    <div style="width:100%;max-width:820px;margin-top:20px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px" class="fade-up" style="animation-delay:.15s" id="tips-row">
+      <div style="background:#fff;border-radius:14px;padding:16px 18px;border:1px solid rgba(201,228,212,.5);box-shadow:var(--shadow)">
+        <div style="font-size:22px;margin-bottom:8px">📸</div>
+        <div style="font-size:13px;font-weight:700;color:var(--green-dark);margin-bottom:4px">Chụp từ phía trên</div>
+        <div style="font-size:12px;color:var(--text-muted)">Góc chụp thẳng từ trên xuống giúp AI nhận diện chính xác hơn</div>
+      </div>
+      <div style="background:#fff;border-radius:14px;padding:16px 18px;border:1px solid rgba(201,228,212,.5);box-shadow:var(--shadow)">
+        <div style="font-size:22px;margin-bottom:8px">💡</div>
+        <div style="font-size:13px;font-weight:700;color:var(--green-dark);margin-bottom:4px">Đủ ánh sáng</div>
+        <div style="font-size:12px;color:var(--text-muted)">Chụp trong điều kiện ánh sáng tốt để màu sắc thực phẩm hiện rõ</div>
+      </div>
+      <div style="background:#fff;border-radius:14px;padding:16px 18px;border:1px solid rgba(201,228,212,.5);box-shadow:var(--shadow)">
+        <div style="font-size:22px;margin-bottom:8px">🎯</div>
+        <div style="font-size:13px;font-weight:700;color:var(--green-dark);margin-bottom:4px">Một đĩa mỗi lần</div>
+        <div style="font-size:12px;color:var(--text-muted)">Chụp từng đĩa riêng biệt để AI phân tích chính xác từng món</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--green-dark);color:#fff;padding:12px 24px;border-radius:100px;font-size:14px;font-weight:600;transition:transform .3s,opacity .3s;z-index:999;opacity:0"></div>
+
+<style>
+@keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+</style>
+<script>
+function startAnalysis() {
+  document.getElementById('state-upload').style.display = 'none';
+  document.getElementById('state-loading').style.display = 'block';
+  document.getElementById('tips-row').style.display = 'none';
+
+  // Simulate progress steps
+  setTimeout(() => {
+    document.getElementById('step2').style.opacity = '1';
+    document.getElementById('loading-text').textContent = 'Đang nhận diện từng món...';
+    document.getElementById('loading-sub').textContent = 'Phát hiện 4 thực phẩm trong ảnh';
+  }, 900);
+  setTimeout(() => {
+    document.getElementById('step3').style.opacity = '1';
+    document.getElementById('loading-text').textContent = 'Đang tính toán dinh dưỡng...';
+    document.getElementById('loading-sub').textContent = 'Ước lượng khẩu phần và calo';
+  }, 1700);
+  setTimeout(() => {
+    document.getElementById('state-loading').style.display = 'none';
+    document.getElementById('state-result').style.display = 'block';
+    updateResTotal();
+  }, 2600);
+}
+
+function loadRecentScan() { startAnalysis(); }
+
+function updateResTotal() {
+  const checkboxes = document.querySelectorAll('.di-check');
+  const cals = [260, 218, 72, 98];
+  let total = 0; let count = 0;
+  checkboxes.forEach((cb, i) => { if (cb.checked) { total += cals[i]; count++; } });
+  document.getElementById('selected-cal').textContent = total;
+  const countEl = document.getElementById('selected-cal').nextElementSibling;
+  if (countEl) countEl.textContent = 'kcal · ' + count + ' món';
+}
+
+function resetScan() {
+  document.getElementById('state-result').style.display = 'none';
+  document.getElementById('state-loading').style.display = 'none';
+  document.getElementById('state-upload').style.display = 'block';
+  document.getElementById('tips-row').style.display = 'grid';
+  // Reset progress steps
+  document.getElementById('step2').style.opacity = '.3';
+  document.getElementById('step3').style.opacity = '.3';
+}
+
+function addToLog() {
+  const checked = document.querySelectorAll('.di-check:checked').length;
+  showToast('✓ Đã thêm ' + checked + ' món vào nhật ký bữa trưa');
+  setTimeout(() => location.href = 'Food Log.html', 1000);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)';
+  setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(60px)'; }, 2400);
+}
+</script>
+</body>
+</html>
