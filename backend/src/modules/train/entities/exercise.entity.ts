@@ -4,7 +4,9 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
+import { SportTip } from './sport-tip.entity';
 import { MuscleGroup } from '../../../common/enums/muscle-group.enum';
 import { TrainingIntensity } from '../../../common/enums/training-intensity.enum';
 
@@ -55,6 +57,9 @@ export class Exercise {
 
   @Column({ name: 'favorites_count', type: 'int', default: 0 })
   favoritesCount!: number;
+
+  @OneToMany(() => SportTip, (tip) => tip.exercise)
+  tips!: SportTip[];
 
   @CreateDateColumn()
   createdAt!: Date;

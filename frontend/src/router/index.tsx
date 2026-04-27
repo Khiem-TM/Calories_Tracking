@@ -2,7 +2,9 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/layouts/AppLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
+import { AdminLayout } from '@/layouts/AdminLayout'
 import { ProtectedRoute } from './ProtectedRoute'
+import { AdminRoute } from './AdminRoute'
 import { CardSkeleton } from '@/components/common/LoadingSkeleton'
 
 const Loading = () => (
@@ -35,6 +37,15 @@ const ChatbotPage = lazy(() => import('@/pages/ChatbotPage'))
 const AiScanPage = lazy(() => import('@/pages/AiScanPage'))
 const BlogPage = lazy(() => import('@/pages/BlogPage'))
 const NotificationsPage = lazy(() => import('@/pages/NotificationsPage'))
+
+// Admin pages
+const AdminLoginPage = lazy(() => import('@/pages/admin/AdminLoginPage'))
+const AdminDashboardPage = lazy(() => import('@/pages/admin/AdminDashboardPage'))
+const UserManagementPage = lazy(() => import('@/pages/admin/UserManagementPage'))
+const FoodManagementPage = lazy(() => import('@/pages/admin/FoodManagementPage'))
+const ExerciseManagementPage = lazy(() => import('@/pages/admin/ExerciseManagementPage'))
+const BlogManagementPage = lazy(() => import('@/pages/admin/BlogManagementPage'))
+const SportTipManagementPage = lazy(() => import('@/pages/admin/SportTipManagementPage'))
 
 export function AppRouter() {
   return (
@@ -84,6 +95,25 @@ export function AppRouter() {
           <Route path="/ai-scan" element={<AiScanPage />} />
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
+        </Route>
+
+        {/* Admin routes */}
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminLayout />
+            </AdminRoute>
+          }
+        >
+          <Route index element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="dashboard" element={<AdminDashboardPage />} />
+          <Route path="users" element={<UserManagementPage />} />
+          <Route path="foods" element={<FoodManagementPage />} />
+          <Route path="exercises" element={<ExerciseManagementPage />} />
+          <Route path="blogs" element={<BlogManagementPage />} />
+          <Route path="sport-tips" element={<SportTipManagementPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

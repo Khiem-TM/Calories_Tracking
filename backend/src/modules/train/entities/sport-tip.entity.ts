@@ -4,7 +4,10 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { Exercise } from './exercise.entity';
 import { MuscleGroup } from '../../../common/enums/muscle-group.enum';
 
 @Entity('sport_tips')
@@ -38,6 +41,13 @@ export class SportTip {
 
   @Column({ type: 'boolean', default: false })
   is_published: boolean;
+  
+  @ManyToOne(() => Exercise, (exercise) => exercise.tips, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'exercise_id' })
+  exercise: Exercise | null;
+
+  @Column({ name: 'exercise_id', type: 'uuid', nullable: true })
+  exercise_id: string | null;
 
   @CreateDateColumn()
   created_at: Date;
