@@ -21,6 +21,7 @@ import {
   ApiConsumes,
   ApiBody,
   ApiQuery,
+  ApiParam,
 } from '@nestjs/swagger';
 import { BodyMetricsService } from '../services/body-metrics.service';
 import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
@@ -86,6 +87,16 @@ export class BodyMetricsController {
     @Param('date') date: string,
   ) {
     return this.bodyMetricsService.getHistory(user.sub, { date });
+  }
+
+  @ApiOperation({ summary: 'Get body metrics by time period' })
+  @ApiParam({ name: 'period', enum: ['week', 'month', '3months', '6months', 'year'] })
+  @Get('period/:period')
+  getByPeriod(
+    @CurrentUser() user: JwtPayload,
+    @Param('period') period: 'week' | 'month' | '3months' | '6months' | 'year',
+  ) {
+    return this.bodyMetricsService.getByPeriod(user.sub, period);
   }
 
   @ApiOperation({ summary: 'Get progress photos' })

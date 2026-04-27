@@ -2,9 +2,8 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Exercise } from './entities/exercise.entity';
 import { WorkoutSession } from './entities/workout-session.entity';
-import { TrainingGoal } from './entities/training-goal.entity';
+import { WorkoutSessionDetail } from './entities/workout-session-detail.entity';
 import { ExerciseUserFavorite } from './entities/exercise-user-favorite.entity';
-import { SportTip } from './entities/sport-tip.entity';
 import { BodyMetric } from './entities/body-metric.entity';
 import { BodyProgressPhoto } from './entities/body-progress-photo.entity';
 import { ActivityLog } from './entities/activity-log.entity';
@@ -19,14 +18,12 @@ import { ActivityLogsService } from './services/activity-logs.service';
 import {
   ExercisesRepository,
   WorkoutSessionsRepository,
-  TrainingGoalsRepository,
 } from './repositories/training.repository';
 import { BodyMetricsRepository } from './repositories/body-metrics.repository';
 import { ActivityLogsRepository } from './repositories/activity-logs.repository';
 import {
   TRAINING_EXERCISES_REPOSITORY,
   WORKOUT_SESSIONS_REPOSITORY,
-  TRAINING_GOALS_REPOSITORY,
   BODY_METRICS_REPOSITORY,
   BODY_PHOTOS_REPOSITORY,
   ACTIVITY_LOGS_REPOSITORY,
@@ -37,9 +34,8 @@ import {
     TypeOrmModule.forFeature([
       Exercise,
       WorkoutSession,
-      TrainingGoal,
+      WorkoutSessionDetail,
       ExerciseUserFavorite,
-      SportTip,
       BodyMetric,
       BodyProgressPhoto,
       ActivityLog,
@@ -54,7 +50,6 @@ import {
     ActivityLogsService,
     { provide: TRAINING_EXERCISES_REPOSITORY, useClass: ExercisesRepository },
     { provide: WORKOUT_SESSIONS_REPOSITORY, useClass: WorkoutSessionsRepository },
-    { provide: TRAINING_GOALS_REPOSITORY, useClass: TrainingGoalsRepository },
     { provide: BODY_METRICS_REPOSITORY, useClass: BodyMetricsRepository },
     { provide: BODY_PHOTOS_REPOSITORY, useClass: BodyMetricsRepository },
     { provide: ACTIVITY_LOGS_REPOSITORY, useClass: ActivityLogsRepository },

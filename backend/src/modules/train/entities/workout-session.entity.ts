@@ -5,10 +5,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
 } from 'typeorm';
-import { Exercise } from './exercise.entity';
 import { User } from '../../user/entities/user.entity';
+import { WorkoutSessionDetail } from './workout-session-detail.entity';
 
 @Entity('workout_sessions')
 export class WorkoutSession {
@@ -18,29 +19,20 @@ export class WorkoutSession {
   @Column({ name: 'user_id' })
   userId!: string;
 
-  @Column({ name: 'exercise_id' })
-  exerciseId!: string;
-
   @Column({ name: 'session_date', type: 'date' })
   sessionDate!: string;
 
-  @Column({ name: 'duration_minutes', default: 0 })
-  durationMinutes!: number;
+  @Column({ name: 'session_name', type: 'varchar', length: 100, nullable: true })
+  sessionName!: string | null;
 
-  @Column({ name: 'weight_kg', type: 'decimal', precision: 6, scale: 2, nullable: true })
-  weightKg!: number;
+  @Column({ name: 'total_duration_minutes', type: 'int', default: 0 })
+  totalDurationMinutes!: number;
 
-  @Column({ default: 0 })
-  sets!: number;
-
-  @Column({ name: 'reps_per_set', default: 0 })
-  repsPerSet!: number;
-
-  @Column({ name: 'calories_burned_snapshot', type: 'decimal', precision: 7, scale: 2 })
-  caloriesBurnedSnapshot!: number;
+  @Column({ name: 'total_calories_burned', type: 'decimal', precision: 7, scale: 2, default: 0 })
+  totalCaloriesBurned!: number;
 
   @Column({ type: 'text', nullable: true })
-  notes!: string;
+  notes!: string | null;
 
   @CreateDateColumn()
   createdAt!: Date;
@@ -52,7 +44,6 @@ export class WorkoutSession {
   @JoinColumn({ name: 'user_id' })
   user!: User;
 
-  @ManyToOne(() => Exercise, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'exercise_id' })
-  exercise!: Exercise;
+  @OneToMany(() => WorkoutSessionDetail, (d) => d.session, { cascade: true })
+  details!: WorkoutSessionDetail[];
 }

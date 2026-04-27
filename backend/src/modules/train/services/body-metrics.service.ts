@@ -76,6 +76,19 @@ export class BodyMetricsService {
     return this.repository.findRange(userId, fromDate, toDate);
   }
 
+  async getByPeriod(userId: string, period: 'week' | 'month' | '3months' | '6months' | 'year') {
+    const to = new Date().toISOString().split('T')[0];
+    const from = new Date();
+    switch (period) {
+      case 'week':    from.setDate(from.getDate() - 7); break;
+      case 'month':   from.setMonth(from.getMonth() - 1); break;
+      case '3months': from.setMonth(from.getMonth() - 3); break;
+      case '6months': from.setMonth(from.getMonth() - 6); break;
+      case 'year':    from.setFullYear(from.getFullYear() - 1); break;
+    }
+    return this.getRange(userId, from.toISOString().split('T')[0], to);
+  }
+
   async getProgressSummary(userId: string) {
     const history = await this.repository.findHistory(userId, { limit: 1000 });
     if (history.length === 0) {

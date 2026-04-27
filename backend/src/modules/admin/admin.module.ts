@@ -7,26 +7,24 @@ import { Food } from '../food/entities/food.entity';
 import { Exercise } from '../train/entities/exercise.entity';
 import { WorkoutSession } from '../train/entities/workout-session.entity';
 import { Blog } from '../blog/entities/blog.entity';
-import { SportTip } from '../train/entities/sport-tip.entity';
 import { FoodRecipe } from '../food/entities/food-recipe.entity';
 import { FoodRecipeStep } from '../food/entities/food-recipe-step.entity';
 import { AdminService } from './admin.service';
 import { AdminController } from './admin.controller';
 import { AdminAuthController } from './admin-auth.controller';
-import { SportTipAdminController } from './sport-tip.controller';
 import { RecipeAdminController } from './recipe.controller';
 import { JwtStrategy } from '../user/strategies/jwt.strategy';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Food, Exercise, WorkoutSession, Blog, SportTip, FoodRecipe, FoodRecipeStep]),
+    TypeOrmModule.forFeature([User, Food, Exercise, WorkoutSession, Blog, FoodRecipe, FoodRecipeStep]),
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'khiemhehe',
       signOptions: { expiresIn: '7d' },
     }),
   ],
-  controllers: [AdminController, AdminAuthController, SportTipAdminController, RecipeAdminController],
+  controllers: [AdminController, AdminAuthController, RecipeAdminController],
   providers: [AdminService, JwtStrategy],
 })
 export class AdminModule {}

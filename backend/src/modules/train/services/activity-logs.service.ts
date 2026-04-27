@@ -66,4 +66,8 @@ export class ActivityLogsService {
     const today = new Date().toISOString().split('T')[0];
     return this.getByDate(userId, today);
   }
+
+  async setWorkoutCalories(userId: string, date: string, calories: number): Promise<void> {
+    await this.repository.upsertWorkoutCalories(userId, date, calories);
+  }
 }

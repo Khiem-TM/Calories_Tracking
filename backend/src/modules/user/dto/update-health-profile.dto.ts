@@ -85,4 +85,69 @@ export class UpdateHealthProfileDto {
   @Min(500)
   @Max(10000)
   caloriesGoal?: number;
+
+  @ApiPropertyOptional({
+    example: 'lose_weight',
+    enum: ['lose_weight', 'gain_muscle', 'maintain', 'improve_endurance'],
+  })
+  @IsOptional()
+  @IsString()
+  goalType?: string;
+
+  @ApiPropertyOptional({ example: 65 })
+  @IsOptional()
+  @IsNumber()
+  @Min(10)
+  @Max(500)
+  targetWeightKg?: number;
+
+  @ApiPropertyOptional({ example: 1800 })
+  @IsOptional()
+  @IsNumber()
+  @Min(500)
+  @Max(10000)
+  dailyCaloriesGoal?: number;
+
+  @ApiPropertyOptional({ example: 150 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  proteinGoalG?: number;
+
+  @ApiPropertyOptional({ example: 65 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  fatGoalG?: number;
+
+  @ApiPropertyOptional({ example: 200 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  carbsGoalG?: number;
+
+  @ApiPropertyOptional({ example: 0.5 })
+  @IsOptional()
+  @IsNumber()
+  @Min(-2)
+  @Max(2)
+  weeklyRateKg?: number;
+
+  @ApiPropertyOptional({ example: '2026-01-01' })
+  @IsOptional()
+  @IsDateString()
+  goalStartDate?: string;
+
+  @ApiPropertyOptional({ example: '2026-12-31' })
+  @IsOptional()
+  @IsDateString()
+  goalDeadline?: string;
+
+  @ApiPropertyOptional({
+    example: 'active',
+    enum: ['active', 'completed', 'paused'],
+  })
+  @IsOptional()
+  @IsString()
+  goalStatus?: string;
 }

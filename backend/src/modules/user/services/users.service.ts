@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { UserHealthProfile } from '../entities/user-health-profile.entity';
 import { RefreshToken } from '../entities/refresh-token.entity';
+import { BodyMetricsService } from '../../train/services/body-metrics.service';
 
 @Injectable()
 export class UsersService {
@@ -14,6 +15,8 @@ export class UsersService {
     private readonly healthProfileRepository: Repository<UserHealthProfile>,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepository: Repository<RefreshToken>,
+    @Inject(forwardRef(() => BodyMetricsService))
+    private readonly bodyMetricsService: BodyMetricsService,
   ) {}
 
   async findById(id: string): Promise<User> {
@@ -47,7 +50,6 @@ export class UsersService {
     const user = await this.findById(id);
     user.is_active = false;
     await this.userRepository.save(user);
-    // Revoke all refresh tokens so active sessions are immediately invalidated
     await this.refreshTokenRepository.delete({ user: { id } });
   }
 
@@ -74,13 +76,34 @@ export class UsersService {
     data: Partial<UserHealthProfile>,
   ): Promise<UserHealthProfile> {
     const profile = await this.getHealthProfile(userId);
+
+    const merged: Partial<UserHealthProfile> = profile
+      ? { ...profile, ...data }
+      : { ...data };
+
+    // Auto-calculate macros when goalType is set and no manual macro values provided
+    if (data.goalType && !data.proteinGoalG && !data.fatGoalG && !data.carbsGoalG) {
+      const latestMetric = await this.bodyMetricsService.getLatest(userId);
+      if (latestMetric?.tdee) {
+        const tdee = Number(latestMetric.tdee);
+        let calories = tdee;
+        if (data.goalType === 'lose_weight') calories = tdee - 500;
+        else if (data.goalType === 'gain_muscle') calories = tdee + 300;
+
+        merged.dailyCaloriesGoal = Number(calories.toFixed(2));
+        merged.proteinGoalG = Number(((calories * 0.3) / 4).toFixed(2));
+        merged.fatGoalG = Number(((calories * 0.3) / 9).toFixed(2));
+        merged.carbsGoalG = Number(((calories * 0.4) / 4).toFixed(2));
+      }
+    }
+
     if (profile) {
-      Object.assign(profile, data);
+      Object.assign(profile, merged);
       return this.healthProfileRepository.save(profile);
     }
     const newProfile = this.healthProfileRepository.create({
       user: { id: userId },
-      ...data,
+      ...merged,
     });
     return this.healthProfileRepository.save(newProfile);
   }

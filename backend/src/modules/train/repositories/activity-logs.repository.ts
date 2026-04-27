@@ -74,6 +74,16 @@ export class ActivityLogsRepository implements IActivityLogsRepository {
     return this.repo.findOne({ where: { userId, logDate: date } });
   }
 
+  async upsertWorkoutCalories(userId: string, date: string, calories: number): Promise<void> {
+    await this.repo
+      .createQueryBuilder()
+      .insert()
+      .into(ActivityLog)
+      .values({ userId, logDate: date, caloriesBurned: calories })
+      .orUpdate(['calories_burned', 'updated_at'], ['user_id', 'log_date'])
+      .execute();
+  }
+
   async findRange(
     userId: string,
     fromDate: string,

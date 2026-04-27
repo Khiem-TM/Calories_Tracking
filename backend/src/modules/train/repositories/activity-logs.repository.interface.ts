@@ -24,4 +24,5 @@ export interface IActivityLogsRepository {
     fromDate: string,
     toDate: string,
   ): Promise<ActivityLog[]>;
+  upsertWorkoutCalories(userId: string, date: string, calories: number): Promise<void>;
 }

@@ -1,6 +1,6 @@
 import { Exercise } from '../entities/exercise.entity';
 import { WorkoutSession } from '../entities/workout-session.entity';
-import { TrainingGoal } from '../entities/training-goal.entity';
+import { WorkoutSessionDetail } from '../entities/workout-session-detail.entity';
 import { MuscleGroup } from '../../../common/enums/muscle-group.enum';
 
 export interface IExercisesRepository {
@@ -12,19 +12,16 @@ export interface IExercisesRepository {
 }
 
 export interface IWorkoutSessionsRepository {
-  save(session: Partial<WorkoutSession>): Promise<WorkoutSession>;
+  createSession(data: Partial<WorkoutSession>): Promise<WorkoutSession>;
   findByUser(userId: string, limit: number): Promise<WorkoutSession[]>;
   findByDateRange(userId: string, from: string, to: string): Promise<WorkoutSession[]>;
   findById(id: string): Promise<WorkoutSession | null>;
-  update(id: string, data: Partial<WorkoutSession>): Promise<WorkoutSession>;
-  delete(id: string): Promise<void>;
-}
-
-export interface ITrainingGoalsRepository {
-  save(goal: Partial<TrainingGoal>): Promise<TrainingGoal>;
-  findByUser(userId: string): Promise<TrainingGoal[]>;
-  findById(id: string): Promise<TrainingGoal | null>;
-  updateProgress(goalId: string, progress: number): Promise<void>;
-  update(id: string, data: Partial<TrainingGoal>): Promise<TrainingGoal>;
-  delete(id: string): Promise<void>;
+  updateTotals(id: string, totalDurationMinutes: number, totalCaloriesBurned: number): Promise<void>;
+  updateSession(id: string, data: Partial<WorkoutSession>): Promise<WorkoutSession>;
+  deleteSession(id: string): Promise<void>;
+  sumCaloriesForDate(userId: string, date: string): Promise<number>;
+  addDetail(data: Partial<WorkoutSessionDetail>): Promise<WorkoutSessionDetail>;
+  findDetailById(detailId: string): Promise<WorkoutSessionDetail | null>;
+  deleteDetail(detailId: string): Promise<void>;
+  findDetailsBySession(sessionId: string): Promise<WorkoutSessionDetail[]>;
 }

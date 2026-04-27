@@ -3,11 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
 import { Exercise } from '../entities/exercise.entity';
 import { WorkoutSession } from '../entities/workout-session.entity';
-import { TrainingGoal } from '../entities/training-goal.entity';
+import { WorkoutSessionDetail } from '../entities/workout-session-detail.entity';
 import {
   IExercisesRepository,
   IWorkoutSessionsRepository,
-  ITrainingGoalsRepository,
 } from './training.repository.interface';
 import { MuscleGroup } from '../../../common/enums/muscle-group.enum';
 
@@ -19,7 +18,7 @@ export class ExercisesRepository implements IExercisesRepository {
   ) {}
 
   async findAll(query: { name?: string; muscleGroup?: MuscleGroup }): Promise<Exercise[]> {
-    const where: any = {};
+    const where: any = { isActive: true };
     if (query.name) where.name = Like(`%${query.name}%`);
     if (query.muscleGroup) where.primaryMuscleGroup = query.muscleGroup;
 
@@ -67,17 +66,19 @@ export class WorkoutSessionsRepository implements IWorkoutSessionsRepository {
   constructor(
     @InjectRepository(WorkoutSession)
     private readonly repo: Repository<WorkoutSession>,
+    @InjectRepository(WorkoutSessionDetail)
+    private readonly detailRepo: Repository<WorkoutSessionDetail>,
   ) {}
 
-  async save(session: Partial<WorkoutSession>): Promise<WorkoutSession> {
-    const newSession = this.repo.create(session);
-    return this.repo.save(newSession);
+  async createSession(data: Partial<WorkoutSession>): Promise<WorkoutSession> {
+    const session = this.repo.create(data);
+    return this.repo.save(session);
   }
 
   async findByUser(userId: string, limit: number): Promise<WorkoutSession[]> {
     return this.repo.find({
       where: { userId },
-      relations: ['exercise'],
+      relations: ['details', 'details.exercise'],
       order: { sessionDate: 'DESC' },
       take: limit,
     });
@@ -86,61 +87,65 @@ export class WorkoutSessionsRepository implements IWorkoutSessionsRepository {
   async findByDateRange(userId: string, from: string, to: string): Promise<WorkoutSession[]> {
     return this.repo
       .createQueryBuilder('ws')
-      .leftJoinAndSelect('ws.exercise', 'exercise')
+      .leftJoinAndSelect('ws.details', 'details')
+      .leftJoinAndSelect('details.exercise', 'exercise')
       .where('ws.userId = :userId', { userId })
       .andWhere('ws.sessionDate BETWEEN :from AND :to', { from, to })
       .orderBy('ws.sessionDate', 'ASC')
+      .addOrderBy('details.orderIndex', 'ASC')
       .getMany();
   }
 
   async findById(id: string): Promise<WorkoutSession | null> {
-    return this.repo.findOne({ where: { id }, relations: ['exercise'] });
-  }
-
-  async update(id: string, data: Partial<WorkoutSession>): Promise<WorkoutSession> {
-    await this.repo.update(id, data);
-    return this.repo.findOne({ where: { id }, relations: ['exercise'] }) as Promise<WorkoutSession>;
-  }
-
-  async delete(id: string): Promise<void> {
-    await this.repo.delete(id);
-  }
-}
-
-@Injectable()
-export class TrainingGoalsRepository implements ITrainingGoalsRepository {
-  constructor(
-    @InjectRepository(TrainingGoal)
-    private readonly repo: Repository<TrainingGoal>,
-  ) {}
-
-  async save(goal: Partial<TrainingGoal>): Promise<TrainingGoal> {
-    const newGoal = this.repo.create(goal);
-    return this.repo.save(newGoal);
-  }
-
-  async findByUser(userId: string): Promise<TrainingGoal[]> {
-    return this.repo.find({
-      where: { userId },
-      order: { deadline: 'ASC' },
+    return this.repo.findOne({
+      where: { id },
+      relations: ['details', 'details.exercise'],
     });
   }
 
-  async findById(id: string): Promise<TrainingGoal | null> {
-    return this.repo.findOne({ where: { id } });
+  async updateTotals(id: string, totalDurationMinutes: number, totalCaloriesBurned: number): Promise<void> {
+    await this.repo.update(id, { totalDurationMinutes, totalCaloriesBurned });
   }
 
-  async updateProgress(goalId: string, progress: number): Promise<void> {
-    await this.repo.update(goalId, { currentValue: progress });
-  }
-
-  async update(id: string, data: Partial<TrainingGoal>): Promise<TrainingGoal> {
+  async updateSession(id: string, data: Partial<WorkoutSession>): Promise<WorkoutSession> {
     await this.repo.update(id, data);
-    return this.repo.findOne({ where: { id } }) as Promise<TrainingGoal>;
+    return this.repo.findOne({
+      where: { id },
+      relations: ['details', 'details.exercise'],
+    }) as Promise<WorkoutSession>;
   }
 
-  async delete(id: string): Promise<void> {
+  async deleteSession(id: string): Promise<void> {
     await this.repo.delete(id);
+  }
+
+  async sumCaloriesForDate(userId: string, date: string): Promise<number> {
+    const result = await this.repo
+      .createQueryBuilder('ws')
+      .select('COALESCE(SUM(ws.totalCaloriesBurned), 0)', 'total')
+      .where('ws.userId = :userId AND ws.sessionDate = :date', { userId, date })
+      .getRawOne();
+    return Number(result?.total ?? 0);
+  }
+
+  async addDetail(data: Partial<WorkoutSessionDetail>): Promise<WorkoutSessionDetail> {
+    const detail = this.detailRepo.create(data);
+    return this.detailRepo.save(detail);
+  }
+
+  async findDetailById(detailId: string): Promise<WorkoutSessionDetail | null> {
+    return this.detailRepo.findOne({ where: { id: detailId }, relations: ['exercise'] });
+  }
+
+  async deleteDetail(detailId: string): Promise<void> {
+    await this.detailRepo.delete(detailId);
+  }
+
+  async findDetailsBySession(sessionId: string): Promise<WorkoutSessionDetail[]> {
+    return this.detailRepo.find({
+      where: { workoutSessionId: sessionId },
+      order: { orderIndex: 'ASC' },
+    });
   }
 }
 

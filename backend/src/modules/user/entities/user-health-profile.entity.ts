@@ -71,6 +71,36 @@ export class UserHealthProfile {
   })
   caloriesGoal!: number;
 
+  @Column({ name: 'goal_type', type: 'varchar', length: 30, nullable: true })
+  goalType!: string | null;
+
+  @Column({ name: 'target_weight_kg', type: 'decimal', precision: 5, scale: 1, nullable: true })
+  targetWeightKg!: number | null;
+
+  @Column({ name: 'daily_calories_goal', type: 'decimal', precision: 7, scale: 2, nullable: true })
+  dailyCaloriesGoal!: number | null;
+
+  @Column({ name: 'protein_goal_g', type: 'decimal', precision: 6, scale: 2, nullable: true })
+  proteinGoalG!: number | null;
+
+  @Column({ name: 'fat_goal_g', type: 'decimal', precision: 6, scale: 2, nullable: true })
+  fatGoalG!: number | null;
+
+  @Column({ name: 'carbs_goal_g', type: 'decimal', precision: 6, scale: 2, nullable: true })
+  carbsGoalG!: number | null;
+
+  @Column({ name: 'weekly_rate_kg', type: 'decimal', precision: 4, scale: 2, nullable: true })
+  weeklyRateKg!: number | null;
+
+  @Column({ name: 'goal_start_date', type: 'date', nullable: true })
+  goalStartDate!: string | null;
+
+  @Column({ name: 'goal_deadline', type: 'date', nullable: true })
+  goalDeadline!: string | null;
+
+  @Column({ name: 'goal_status', type: 'varchar', length: 20, nullable: true })
+  goalStatus!: string | null;
+
   @CreateDateColumn()
   createdAt!: Date;
 

@@ -15,7 +15,14 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { buildMulterOptions } from '../../../common/utils/multer.config';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes, ApiBody, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiConsumes,
+  ApiBody,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { TrainingService } from '../services/training.service';
 import { JwtAuthGuard } from '../../../common/guards/jwt.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
@@ -23,14 +30,10 @@ import { Public } from '../../../common/decorators/public.decorator';
 import type { JwtPayload } from '../../../common/interfaces/jwt-payload.interface';
 import {
   ExerciseQueryDto,
-  LogWorkoutDto,
-  CreateTrainingGoalDto,
+  CreateWorkoutSessionDto,
+  AddWorkoutDetailDto,
 } from '../dto/training.dto';
-import { MuscleGroup } from '../../../common/enums/muscle-group.enum';
-import {
-  UpdateTrainingGoalDto,
-  UpdateWorkoutSessionDto,
-} from '../dto/update-training.dto';
+import { UpdateWorkoutSessionDto } from '../dto/update-training.dto';
 
 @ApiTags('training')
 @ApiBearerAuth('access-token')
@@ -38,6 +41,8 @@ import {
 @Controller('training')
 export class TrainingController {
   constructor(private readonly trainingService: TrainingService) {}
+
+  // ─── Exercises ────────────────────────────────────────────────────────────
 
   @Public()
   @ApiOperation({ summary: 'Get exercises (filter by name, muscleGroup)' })
@@ -91,20 +96,22 @@ export class TrainingController {
     return this.trainingService.removeExerciseGalleryImage(id, publicId);
   }
 
-  @ApiOperation({ summary: 'Log a workout session' })
-  @Post('workout')
-  logWorkout(@CurrentUser() user: JwtPayload, @Body() dto: LogWorkoutDto) {
-    return this.trainingService.logWorkout(user.sub, dto);
+  // ─── Workout Sessions ─────────────────────────────────────────────────────
+
+  @ApiOperation({ summary: 'Create a workout session with one or more exercises' })
+  @Post('sessions')
+  createWorkoutSession(@CurrentUser() user: JwtPayload, @Body() dto: CreateWorkoutSessionDto) {
+    return this.trainingService.createWorkoutSession(user.sub, dto);
   }
 
-  @ApiOperation({ summary: 'Get workout history (most recent, supports limit)' })
+  @ApiOperation({ summary: 'Get workout session history (optional date range / limit)' })
   @ApiQuery({ name: 'limit', required: false, example: 20 })
-  @ApiQuery({ name: 'fromDate', required: false, example: '2024-01-01' })
-  @ApiQuery({ name: 'toDate', required: false, example: '2024-01-31' })
-  @Get('history')
-  getHistory(
+  @ApiQuery({ name: 'fromDate', required: false, example: '2026-01-01' })
+  @ApiQuery({ name: 'toDate', required: false, example: '2026-12-31' })
+  @Get('sessions')
+  getWorkoutHistory(
     @CurrentUser() user: JwtPayload,
-    @Query('limit') limit?: number,
+    @Query('limit') limit?: string,
     @Query('fromDate') fromDate?: string,
     @Query('toDate') toDate?: string,
   ) {
@@ -114,57 +121,51 @@ export class TrainingController {
     return this.trainingService.getWorkoutHistory(user.sub, limit ? Number(limit) : 20);
   }
 
-  @ApiOperation({ summary: 'Get workout sessions for a specific date' })
-  @Get('history/:date')
-  getHistoryByDate(@CurrentUser() user: JwtPayload, @Param('date') date: string) {
-    return this.trainingService.getWorkoutHistoryByDate(user.sub, date);
+  @ApiOperation({ summary: 'Get all workout sessions on a specific date' })
+  @Get('sessions/date/:date')
+  getWorkoutSessionsByDate(@CurrentUser() user: JwtPayload, @Param('date') date: string) {
+    return this.trainingService.getWorkoutSessionsByDate(user.sub, date);
   }
 
-  @ApiOperation({ summary: 'Update a workout session' })
-  @Patch('workout/:id')
-  updateWorkout(
+  @ApiOperation({ summary: 'Update a workout session (name / notes only)' })
+  @Patch('sessions/:id')
+  updateWorkoutSession(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
     @Body() dto: UpdateWorkoutSessionDto,
   ) {
-    return this.trainingService.updateWorkout(user.sub, id, dto);
+    return this.trainingService.updateWorkoutSession(user.sub, id, dto);
   }
 
   @ApiOperation({ summary: 'Delete a workout session' })
-  @Delete('workout/:id')
+  @Delete('sessions/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  deleteWorkout(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
-    return this.trainingService.deleteWorkout(user.sub, id);
+  deleteWorkoutSession(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.trainingService.deleteWorkoutSession(user.sub, id);
   }
 
-  @ApiOperation({ summary: 'Get training goals' })
-  @Get('goals')
-  getGoals(@CurrentUser() user: JwtPayload) {
-    return this.trainingService.getMyGoals(user.sub);
-  }
-
-  @ApiOperation({ summary: 'Create a training goal' })
-  @Post('goals')
-  createGoal(@CurrentUser() user: JwtPayload, @Body() dto: CreateTrainingGoalDto) {
-    return this.trainingService.createGoal(user.sub, dto);
-  }
-
-  @ApiOperation({ summary: 'Update a training goal' })
-  @Patch('goals/:id')
-  updateGoal(
+  @ApiOperation({ summary: 'Add an exercise to an existing workout session' })
+  @Post('sessions/:id/exercises')
+  addExerciseToSession(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
-    @Body() dto: UpdateTrainingGoalDto,
+    @Body() dto: AddWorkoutDetailDto,
   ) {
-    return this.trainingService.updateGoal(user.sub, id, dto);
+    return this.trainingService.addExerciseToSession(user.sub, id, dto);
   }
 
-  @ApiOperation({ summary: 'Delete a training goal' })
-  @Delete('goals/:id')
+  @ApiOperation({ summary: 'Remove an exercise from a workout session' })
+  @Delete('sessions/:id/exercises/:detailId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  deleteGoal(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
-    return this.trainingService.deleteGoal(user.sub, id);
+  removeExerciseFromSession(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Param('detailId') detailId: string,
+  ) {
+    return this.trainingService.removeExerciseFromSession(user.sub, id, detailId);
   }
+
+  // ─── Exercise Favorites ───────────────────────────────────────────────────
 
   @ApiOperation({ summary: 'Get favorite exercises' })
   @Get('exercises/favorites')
@@ -184,29 +185,5 @@ export class TrainingController {
   async removeExerciseFavorite(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
     await this.trainingService.removeExerciseFavorite(user.sub, id);
     return { message: 'Removed from favorites' };
-  }
-
-  @Public()
-  @ApiOperation({ summary: 'List published sport tips (public)' })
-  @Get('tips')
-  getTips(
-    @Query('page') page = '1',
-    @Query('limit') limit = '20',
-    @Query('sport_category') sportCategory?: string,
-    @Query('muscle_group') muscleGroup?: MuscleGroup,
-  ) {
-    return this.trainingService.getPublishedTips(
-      parseInt(page, 10),
-      parseInt(limit, 10),
-      sportCategory,
-      muscleGroup,
-    );
-  }
-
-  @Public()
-  @ApiOperation({ summary: 'Get one sport tip by ID (public)' })
-  @Get('tips/:id')
-  getOneTip(@Param('id') id: string) {
-    return this.trainingService.getOneTip(id);
   }
 }

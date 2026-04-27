@@ -12,7 +12,6 @@ import { Food } from '../food/entities/food.entity';
 import { Exercise } from '../train/entities/exercise.entity';
 import { WorkoutSession } from '../train/entities/workout-session.entity';
 import { Blog } from '../blog/entities/blog.entity';
-import { SportTip } from '../train/entities/sport-tip.entity';
 import { FoodRecipe } from '../food/entities/food-recipe.entity';
 import { FoodRecipeStep } from '../food/entities/food-recipe-step.entity';
 import { CreateFoodAdminDto } from './dto/create-food-admin.dto';
@@ -37,8 +36,6 @@ export class AdminService {
     private readonly workoutSessionRepo: Repository<WorkoutSession>,
     @InjectRepository(Blog)
     private readonly blogRepo: Repository<Blog>,
-    @InjectRepository(SportTip)
-    private readonly sportTipRepo: Repository<SportTip>,
     @InjectRepository(FoodRecipe)
     private readonly foodRecipeRepo: Repository<FoodRecipe>,
     @InjectRepository(FoodRecipeStep)
@@ -125,7 +122,7 @@ export class AdminService {
       where: { userId: id },
       order: { createdAt: 'DESC' },
       take: 5,
-      relations: ['exercise'],
+      relations: ['details', 'details.exercise'],
     });
 
     return { ...user, recentWorkouts };
@@ -275,35 +272,6 @@ export class AdminService {
     const exercise = await this.exerciseRepo.findOne({ where: { id } });
     if (!exercise) throw new NotFoundException('Exercise not found');
     await this.exerciseRepo.delete(id);
-  }
-
-  // ─── Sport Tips ───────────────────────────────────────────────────────────
-
-  async getAllSportTips(page = 1, limit = 20) {
-    const [items, total] = await this.sportTipRepo.findAndCount({
-      order: { created_at: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-    return { items, total, page, limit };
-  }
-
-  async createSportTip(dto: Partial<SportTip>): Promise<SportTip> {
-    const tip = this.sportTipRepo.create(dto);
-    return this.sportTipRepo.save(tip);
-  }
-
-  async updateSportTip(id: string, dto: Partial<SportTip>): Promise<SportTip> {
-    const tip = await this.sportTipRepo.findOne({ where: { id } });
-    if (!tip) throw new NotFoundException('Sport tip not found');
-    Object.assign(tip, dto);
-    return this.sportTipRepo.save(tip);
-  }
-
-  async deleteSportTip(id: string): Promise<void> {
-    const tip = await this.sportTipRepo.findOne({ where: { id } });
-    if (!tip) throw new NotFoundException('Sport tip not found');
-    await this.sportTipRepo.delete(id);
   }
 
   // ─── Food Recipes (Admin) ─────────────────────────────────────────────────

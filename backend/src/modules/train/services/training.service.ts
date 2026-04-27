@@ -4,25 +4,27 @@ import { DataSource, Repository } from 'typeorm';
 import {
   TRAINING_EXERCISES_REPOSITORY,
   WORKOUT_SESSIONS_REPOSITORY,
-  TRAINING_GOALS_REPOSITORY,
 } from '../train.constants';
 import type {
   IExercisesRepository,
   IWorkoutSessionsRepository,
-  ITrainingGoalsRepository,
 } from '../repositories/training.repository.interface';
-import { ExerciseQueryDto, LogWorkoutDto, CreateTrainingGoalDto } from '../dto/training.dto';
+import {
+  ExerciseQueryDto,
+  CreateWorkoutSessionDto,
+  AddWorkoutDetailDto,
+} from '../dto/training.dto';
+import { UpdateWorkoutSessionDto } from '../dto/update-training.dto';
 import { BodyMetricsService } from './body-metrics.service';
+import { ActivityLogsService } from './activity-logs.service';
 import { StreaksService } from '../../user/services/streaks.service';
 import { UsersService } from '../../user/services/users.service';
-import { TrainingGoalType } from '../../../common/enums/training-goal-type.enum';
 import { StreakType } from '../../../common/enums/streak-type.enum';
-import { UpdateTrainingGoalDto, UpdateWorkoutSessionDto } from '../dto/update-training.dto';
 import { CloudinaryService } from '../../support/cloudinary/cloudinary.service';
 import { ExerciseUserFavorite } from '../entities/exercise-user-favorite.entity';
 import { Exercise } from '../entities/exercise.entity';
-import { SportTip } from '../entities/sport-tip.entity';
-import { MuscleGroup } from '../../../common/enums/muscle-group.enum';
+import { WorkoutSession } from '../entities/workout-session.entity';
+import { WorkoutSessionDetail } from '../entities/workout-session-detail.entity';
 
 @Injectable()
 export class TrainingService {
@@ -31,13 +33,10 @@ export class TrainingService {
     private readonly exerciseRepo: IExercisesRepository,
     @Inject(WORKOUT_SESSIONS_REPOSITORY)
     private readonly sessionRepo: IWorkoutSessionsRepository,
-    @Inject(TRAINING_GOALS_REPOSITORY)
-    private readonly goalRepo: ITrainingGoalsRepository,
     @InjectRepository(ExerciseUserFavorite)
     private readonly exerciseFavoriteRepo: Repository<ExerciseUserFavorite>,
-    @InjectRepository(SportTip)
-    private readonly sportTipRepo: Repository<SportTip>,
     private readonly bodyMetricsService: BodyMetricsService,
+    private readonly activityLogsService: ActivityLogsService,
     @Inject(forwardRef(() => StreaksService))
     private readonly streaksService: StreaksService,
     @Inject(forwardRef(() => UsersService))
@@ -45,6 +44,8 @@ export class TrainingService {
     private readonly cloudinaryService: CloudinaryService,
     private readonly dataSource: DataSource,
   ) {}
+
+  // ─── Exercises ────────────────────────────────────────────────────────────
 
   async getExercises(query: ExerciseQueryDto) {
     return this.exerciseRepo.findAll(query);
@@ -74,129 +75,176 @@ export class TrainingService {
     return this.exerciseRepo.removeImageFromGallery(exerciseId, imagePublicId);
   }
 
-  async logWorkout(userId: string, dto: LogWorkoutDto) {
-    const exercise = await this.exerciseRepo.findById(dto.exerciseId);
+  // ─── Workout Sessions ─────────────────────────────────────────────────────
+
+  private async _calcCalories(
+    userId: string,
+    exerciseId: string,
+    durationMinutes: number,
+  ): Promise<number> {
+    const exercise = await this.exerciseRepo.findById(exerciseId);
     if (!exercise) throw new NotFoundException('Exercise not found');
 
-    // Get weight for calorie calculation
-    let weight = 70; // fallback
+    let weight = 70;
     const latestMetric = await this.bodyMetricsService.getLatest(userId);
-    if (latestMetric && latestMetric.weightKg) {
-      weight = latestMetric.weightKg;
+    if (latestMetric?.weightKg) {
+      weight = Number(latestMetric.weightKg);
     } else {
       const profile = await this.usersService.getHealthProfile(userId);
-      if (profile && profile.initialWeightKg) {
-        weight = profile.initialWeightKg;
-      }
+      if (profile?.initialWeightKg) weight = Number(profile.initialWeightKg);
     }
 
-    // Calories = MET * Weight(kg) * Duration(hours)
-    const durationHours = dto.durationMinutes / 60;
-    const caloriesBurned = Number(exercise.metValue) * weight * durationHours;
-
-    const session = await this.sessionRepo.save({
-      userId,
-      exerciseId: dto.exerciseId,
-      sessionDate: dto.sessionDate,
-      durationMinutes: dto.durationMinutes,
-      weightKg: dto.weightKg,
-      sets: dto.sets,
-      repsPerSet: dto.repsPerSet,
-      notes: dto.notes,
-      caloriesBurnedSnapshot: Number(caloriesBurned.toFixed(2)),
-    });
-
-    // Update streak
-    await this.streaksService.updateActivity(userId, StreakType.WORKOUT, dto.sessionDate);
-
-    return session;
+    return Number((Number(exercise.metValue) * weight * (durationMinutes / 60)).toFixed(2));
   }
 
-  async getWorkoutHistory(userId: string, limit: number = 20) {
+  private async _recalcSessionTotals(
+    sessionId: string,
+  ): Promise<{ totalDurationMinutes: number; totalCaloriesBurned: number }> {
+    const details = await this.sessionRepo.findDetailsBySession(sessionId);
+    const totalDurationMinutes = details.reduce((sum, d) => sum + d.durationMinutes, 0);
+    const totalCaloriesBurned = Number(
+      details.reduce((sum, d) => sum + Number(d.caloriesBurned), 0).toFixed(2),
+    );
+    return { totalDurationMinutes, totalCaloriesBurned };
+  }
+
+  private async _syncActivityLog(userId: string, date: string): Promise<void> {
+    const total = await this.sessionRepo.sumCaloriesForDate(userId, date);
+    await this.activityLogsService.setWorkoutCalories(userId, date, total);
+  }
+
+  async createWorkoutSession(userId: string, dto: CreateWorkoutSessionDto): Promise<WorkoutSession> {
+    // Build details with calorie calculations
+    const detailData: Array<Partial<WorkoutSessionDetail>> = [];
+    let totalDurationMinutes = 0;
+    let totalCaloriesBurned = 0;
+
+    for (const d of dto.details) {
+      const calories = await this._calcCalories(userId, d.exerciseId, d.durationMinutes);
+      detailData.push({
+        exerciseId: d.exerciseId,
+        durationMinutes: d.durationMinutes,
+        weightKg: d.weightKg ?? null,
+        sets: d.sets ?? null,
+        repsPerSet: d.repsPerSet ?? null,
+        orderIndex: d.orderIndex ?? 0,
+        notes: d.notes ?? null,
+        caloriesBurned: calories,
+      });
+      totalDurationMinutes += d.durationMinutes;
+      totalCaloriesBurned += calories;
+    }
+
+    const session = await this.sessionRepo.createSession({
+      userId,
+      sessionDate: dto.sessionDate,
+      sessionName: dto.sessionName ?? null,
+      notes: dto.notes ?? null,
+      totalDurationMinutes,
+      totalCaloriesBurned: Number(totalCaloriesBurned.toFixed(2)),
+    });
+
+    for (const detail of detailData) {
+      await this.sessionRepo.addDetail({ ...detail, workoutSessionId: session.id });
+    }
+
+    await this._syncActivityLog(userId, dto.sessionDate);
+    await this.streaksService.updateActivity(userId, StreakType.WORKOUT, dto.sessionDate);
+
+    return this.sessionRepo.findById(session.id) as Promise<WorkoutSession>;
+  }
+
+  async addExerciseToSession(
+    userId: string,
+    sessionId: string,
+    dto: AddWorkoutDetailDto,
+  ): Promise<WorkoutSession> {
+    const session = await this.sessionRepo.findById(sessionId);
+    if (!session || session.userId !== userId) {
+      throw new NotFoundException('Workout session not found');
+    }
+
+    const calories = await this._calcCalories(userId, dto.exerciseId, dto.durationMinutes);
+    await this.sessionRepo.addDetail({
+      workoutSessionId: sessionId,
+      exerciseId: dto.exerciseId,
+      durationMinutes: dto.durationMinutes,
+      weightKg: dto.weightKg ?? null,
+      sets: dto.sets ?? null,
+      repsPerSet: dto.repsPerSet ?? null,
+      orderIndex: dto.orderIndex ?? 0,
+      notes: dto.notes ?? null,
+      caloriesBurned: calories,
+    });
+
+    const totals = await this._recalcSessionTotals(sessionId);
+    await this.sessionRepo.updateTotals(sessionId, totals.totalDurationMinutes, totals.totalCaloriesBurned);
+    await this._syncActivityLog(userId, session.sessionDate);
+
+    return this.sessionRepo.findById(sessionId) as Promise<WorkoutSession>;
+  }
+
+  async removeExerciseFromSession(
+    userId: string,
+    sessionId: string,
+    detailId: string,
+  ): Promise<void> {
+    const session = await this.sessionRepo.findById(sessionId);
+    if (!session || session.userId !== userId) {
+      throw new NotFoundException('Workout session not found');
+    }
+    const detail = await this.sessionRepo.findDetailById(detailId);
+    if (!detail || detail.workoutSessionId !== sessionId) {
+      throw new NotFoundException('Exercise detail not found');
+    }
+
+    await this.sessionRepo.deleteDetail(detailId);
+
+    const totals = await this._recalcSessionTotals(sessionId);
+    await this.sessionRepo.updateTotals(sessionId, totals.totalDurationMinutes, totals.totalCaloriesBurned);
+    await this._syncActivityLog(userId, session.sessionDate);
+  }
+
+  async updateWorkoutSession(
+    userId: string,
+    sessionId: string,
+    dto: UpdateWorkoutSessionDto,
+  ): Promise<WorkoutSession> {
+    const session = await this.sessionRepo.findById(sessionId);
+    if (!session || session.userId !== userId) {
+      throw new NotFoundException('Workout session not found');
+    }
+    return this.sessionRepo.updateSession(sessionId, {
+      sessionName: dto.sessionName,
+      notes: dto.notes,
+    });
+  }
+
+  async deleteWorkoutSession(userId: string, sessionId: string): Promise<void> {
+    const session = await this.sessionRepo.findById(sessionId);
+    if (!session || session.userId !== userId) {
+      throw new NotFoundException('Workout session not found');
+    }
+    const date = session.sessionDate;
+    await this.sessionRepo.deleteSession(sessionId);
+    await this._syncActivityLog(userId, date);
+  }
+
+  async getWorkoutHistory(userId: string, limit = 20): Promise<WorkoutSession[]> {
     return this.sessionRepo.findByUser(userId, limit);
   }
 
-  async getWorkoutHistoryRange(userId: string, fromDate?: string, toDate?: string) {
+  async getWorkoutHistoryRange(
+    userId: string,
+    fromDate?: string,
+    toDate?: string,
+  ): Promise<WorkoutSession[]> {
     const today = new Date().toISOString().split('T')[0];
-    const from = fromDate || today;
-    const to = toDate || today;
-    return this.sessionRepo.findByDateRange(userId, from, to);
+    return this.sessionRepo.findByDateRange(userId, fromDate || today, toDate || today);
   }
 
-  async getWorkoutHistoryByDate(userId: string, date: string) {
+  async getWorkoutSessionsByDate(userId: string, date: string): Promise<WorkoutSession[]> {
     return this.sessionRepo.findByDateRange(userId, date, date);
-  }
-
-  async createGoal(userId: string, dto: CreateTrainingGoalDto) {
-    // 1. Calculate macros from TDEE if possible
-    const latestMetric = await this.bodyMetricsService.getLatest(userId);
-    let calories = 0;
-    let protein = 0;
-    let fat = 0;
-    let carbs = 0;
-
-    if (latestMetric && latestMetric.tdee) {
-      const tdee = Number(latestMetric.tdee);
-
-      // Basic logic based on goal type
-      if (dto.goalType === TrainingGoalType.LOSE_WEIGHT) {
-        calories = tdee - 500;
-      } else if (dto.goalType === TrainingGoalType.GAIN_MUSCLE) {
-        calories = tdee + 300;
-      } else {
-        calories = tdee;
-      }
-
-      // Simple Macro Split: 30% Protein, 30% Fat, 40% Carbs
-      protein = (calories * 0.3) / 4;
-      fat = (calories * 0.3) / 9;
-      carbs = (calories * 0.4) / 4;
-    }
-
-    return this.goalRepo.save({
-      userId,
-      ...dto,
-      dailyCaloriesGoal: calories > 0 ? calories : undefined,
-      proteinG: protein > 0 ? protein : undefined,
-      fatG: fat > 0 ? fat : undefined,
-      carbsG: carbs > 0 ? carbs : undefined,
-    } as any);
-  }
-
-  async getMyGoals(userId: string) {
-    return this.goalRepo.findByUser(userId);
-  }
-
-  async updateGoal(userId: string, goalId: string, dto: UpdateTrainingGoalDto) {
-    const goal = await this.goalRepo.findById(goalId);
-    if (!goal || goal.userId !== userId) {
-      throw new NotFoundException('Training goal not found');
-    }
-    return this.goalRepo.update(goalId, dto);
-  }
-
-  async deleteGoal(userId: string, goalId: string): Promise<void> {
-    const goal = await this.goalRepo.findById(goalId);
-    if (!goal || goal.userId !== userId) {
-      throw new NotFoundException('Training goal not found');
-    }
-    await this.goalRepo.delete(goalId);
-  }
-
-  async updateWorkout(userId: string, sessionId: string, dto: UpdateWorkoutSessionDto) {
-    const session = await this.sessionRepo.findById(sessionId);
-    if (!session || session.userId !== userId) {
-      throw new NotFoundException('Workout session not found');
-    }
-    return this.sessionRepo.update(sessionId, dto);
-  }
-
-  async deleteWorkout(userId: string, sessionId: string): Promise<void> {
-    const session = await this.sessionRepo.findById(sessionId);
-    if (!session || session.userId !== userId) {
-      throw new NotFoundException('Workout session not found');
-    }
-    await this.sessionRepo.delete(sessionId);
   }
 
   // ─── Exercise Favorites ───────────────────────────────────────────────────
@@ -234,32 +282,5 @@ export class TrainingService {
         await manager.decrement(Exercise, { id: exerciseId }, 'favoritesCount', 1);
       });
     }
-  }
-
-  // ─── Sport Tips ───────────────────────────────────────────────────────────
-
-  async getPublishedTips(
-    page: number = 1,
-    limit: number = 20,
-    sportCategory?: string,
-    muscleGroup?: MuscleGroup,
-  ) {
-    const where: Record<string, unknown> = { is_published: true };
-    if (sportCategory) where['sport_category'] = sportCategory;
-    if (muscleGroup) where['muscle_group'] = muscleGroup;
-
-    const [items, total] = await this.sportTipRepo.findAndCount({
-      where,
-      take: limit,
-      skip: (page - 1) * limit,
-      order: { created_at: 'DESC' },
-    });
-    return { items, total, page, limit };
-  }
-
-  async getOneTip(id: string): Promise<SportTip> {
-    const tip = await this.sportTipRepo.findOne({ where: { id } });
-    if (!tip) throw new NotFoundException('Sport tip not found');
-    return tip;
   }
 }

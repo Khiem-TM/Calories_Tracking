@@ -4,9 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  OneToMany,
 } from 'typeorm';
-import { SportTip } from './sport-tip.entity';
 import { MuscleGroup } from '../../../common/enums/muscle-group.enum';
 import { TrainingIntensity } from '../../../common/enums/training-intensity.enum';
 
@@ -58,8 +56,17 @@ export class Exercise {
   @Column({ name: 'favorites_count', type: 'int', default: 0 })
   favoritesCount!: number;
 
-  @OneToMany(() => SportTip, (tip) => tip.exercise)
-  tips!: SportTip[];
+  @Column({ name: 'secondary_muscle_groups', type: 'simple-json', nullable: true, default: null })
+  secondaryMuscleGroups!: string[] | null;
+
+  @Column({ type: 'varchar', length: 20, default: 'bodyweight' })
+  equipment!: string;
+
+  @Column({ name: 'form_tips', type: 'text', nullable: true })
+  formTips!: string | null;
+
+  @Column({ name: 'is_active', type: 'boolean', default: true })
+  isActive!: boolean;
 
   @CreateDateColumn()
   createdAt!: Date;
