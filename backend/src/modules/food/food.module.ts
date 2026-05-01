@@ -27,15 +27,24 @@ import { MealLogsRepository } from './repositories/meal-logs.repository';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      Food, FoodBarcode, FoodUserFavorite, FoodRecipe,
-      FoodRecipeStep, FoodIngredient, MealLog, MealLogItem, AiScanLog,
+      Food,
+      FoodBarcode,
+      FoodUserFavorite,
+      FoodRecipe,
+      FoodRecipeStep,
+      FoodIngredient,
+      MealLog,
+      MealLogItem,
+      AiScanLog,
     ]),
     SupportModule,
     forwardRef(() => UserModule),
   ],
   controllers: [FoodsController, MealLogsController, AiScanController],
   providers: [
-    FoodsService, MealLogsService, AiScanService,
+    FoodsService,
+    MealLogsService,
+    AiScanService,
     { provide: MEAL_LOGS_REPOSITORY, useClass: MealLogsRepository },
   ],
   exports: [FoodsService, MealLogsService, AiScanService],

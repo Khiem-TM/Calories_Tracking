@@ -1,4 +1,7 @@
 import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import { NotificationsService } from '../../user/services/notifications.service';
+import { UsersService } from '../../user/services/users.service';
+import { NotificationType } from '../../user/entities/notification.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MealLog } from '../entities/meal-log.entity';
@@ -26,6 +29,10 @@ export class MealLogsService {
     private readonly cloudinaryService: CloudinaryService,
     @Inject(forwardRef(() => StreaksService))
     private readonly streaksService: StreaksService,
+    @Inject(forwardRef(() => NotificationsService))
+    private readonly notificationsService: NotificationsService,
+    @Inject(forwardRef(() => UsersService))
+    private readonly usersService: UsersService,
   ) {}
 
   async create(userId: string, dto: CreateMealLogDto): Promise<MealLog> {
@@ -43,6 +50,7 @@ export class MealLogsService {
     }
 
     await this.streaksService.updateActivity(userId, StreakType.CALORIE_GOAL, logDate);
+    await this.checkCalorieGoal(userId, logDate);
 
     return this.repository.findById(log.id) as Promise<MealLog>;
   }
@@ -256,5 +264,18 @@ export class MealLogsService {
     const effectiveDate = date || new Date().toISOString().split('T')[0];
     const logs = await this.findAllByUser(userId, effectiveDate);
     return this._summarizeLogs(effectiveDate, logs);
+  }
+
+  private async checkCalorieGoal(userId: string, logDate: string) {
+    const summary = await this.getDailySummary(userId, logDate);
+    const profile = await this.usersService.getHealthProfile(userId);
+    if (profile && profile.dailyCaloriesGoal && profile.dailyCaloriesGoal > 0 && summary.total_calories > profile.dailyCaloriesGoal) {
+      await this.notificationsService.createOncePerDay(
+        userId,
+        NotificationType.GOAL_PROGRESS,
+        '⚠️ Vượt giới hạn Calories',
+        'Hôm nay: ' + summary.total_calories.toFixed(0) + ' kcal / mục tiêu ' + profile.dailyCaloriesGoal + ' kcal',
+      );
+    }
   }
 }

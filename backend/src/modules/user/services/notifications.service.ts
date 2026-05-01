@@ -1,7 +1,14 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Notification, NotificationType } from '../entities/notification.entity';
+import {
+  Notification,
+  NotificationType,
+} from '../entities/notification.entity';
 
 @Injectable()
 export class NotificationsService {
@@ -10,7 +17,10 @@ export class NotificationsService {
     private readonly repo: Repository<Notification>,
   ) {}
 
-  async getForUser(userId: string, unreadOnly = false): Promise<Notification[]> {
+  async getForUser(
+    userId: string,
+    unreadOnly = false,
+  ): Promise<Notification[]> {
     const where: any = { userId };
     if (unreadOnly) where.isRead = false;
     return this.repo.find({
@@ -20,10 +30,16 @@ export class NotificationsService {
     });
   }
 
-  async markAsRead(userId: string, notificationId: string): Promise<Notification> {
-    const notification = await this.repo.findOne({ where: { id: notificationId } });
+  async markAsRead(
+    userId: string,
+    notificationId: string,
+  ): Promise<Notification> {
+    const notification = await this.repo.findOne({
+      where: { id: notificationId },
+    });
     if (!notification) throw new NotFoundException('Notification not found');
-    if (notification.userId !== userId) throw new ForbiddenException('Access denied');
+    if (notification.userId !== userId)
+      throw new ForbiddenException('Access denied');
     notification.isRead = true;
     return this.repo.save(notification);
   }
@@ -36,10 +52,16 @@ export class NotificationsService {
     return { updated: result.affected ?? 0 };
   }
 
-  async deleteNotification(userId: string, notificationId: string): Promise<void> {
-    const notification = await this.repo.findOne({ where: { id: notificationId } });
+  async deleteNotification(
+    userId: string,
+    notificationId: string,
+  ): Promise<void> {
+    const notification = await this.repo.findOne({
+      where: { id: notificationId },
+    });
     if (!notification) throw new NotFoundException('Notification not found');
-    if (notification.userId !== userId) throw new ForbiddenException('Access denied');
+    if (notification.userId !== userId)
+      throw new ForbiddenException('Access denied');
     await this.repo.delete(notificationId);
   }
 
@@ -55,5 +77,38 @@ export class NotificationsService {
 
   async getUnreadCount(userId: string): Promise<number> {
     return this.repo.count({ where: { userId, isRead: false } });
+  }
+
+  async createMany(
+    userIds: string[],
+    type: NotificationType,
+    title: string,
+    body: string,
+  ): Promise<void> {
+    const notifications = userIds.map((userId) =>
+      this.repo.create({ userId, type, title, body }),
+    );
+    await this.repo.save(notifications);
+  }
+
+  async createOncePerDay(
+    userId: string,
+    type: NotificationType,
+    title: string,
+    body: string,
+  ): Promise<void> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const existing = await this.repo
+      .createQueryBuilder('notification')
+      .where('notification.userId = :userId', { userId })
+      .andWhere('notification.type = :type', { type })
+      .andWhere('notification.title = :title', { title })
+      .andWhere('DATE(notification.createdAt) = DATE(NOW())')
+      .getOne();
+
+    if (!existing) {
+      await this.repo.save(this.repo.create({ userId, type, title, body }));
+    }
   }
 }

@@ -1,3 +1,5 @@
+import { forwardRef } from '@nestjs/common';
+import { UserModule } from '../user/user.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
@@ -17,6 +19,8 @@ import { JwtStrategy } from '../user/strategies/jwt.strategy';
 
 @Module({
   imports: [
+    forwardRef(() => UserModule),
+    
     TypeOrmModule.forFeature([User, Food, Exercise, WorkoutSession, Blog, FoodRecipe, FoodRecipeStep]),
     PassportModule,
     JwtModule.register({

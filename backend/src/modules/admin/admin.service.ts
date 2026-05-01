@@ -1,3 +1,6 @@
+import { NotificationsService } from '../user/services/notifications.service';
+import { NotificationType } from '../user/entities/notification.entity';
+
 import {
   Injectable,
   NotFoundException,
@@ -42,6 +45,7 @@ export class AdminService {
     private readonly foodRecipeStepRepo: Repository<FoodRecipeStep>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async adminLogin(
@@ -132,14 +136,28 @@ export class AdminService {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
     user.is_active = false;
-    return this.userRepo.save(user);
+    await this.userRepo.save(user);
+    await this.notificationsService.create(
+      id,
+      NotificationType.SYSTEM,
+      'Tài khoản bị khóa',
+      'Tài khoản của bạn đã bị tạm khóa.',
+    );
+    return user;
   }
 
   async unbanUser(id: string): Promise<User> {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
     user.is_active = true;
-    return this.userRepo.save(user);
+    await this.userRepo.save(user);
+    await this.notificationsService.create(
+      id,
+      NotificationType.SYSTEM,
+      'Tài khoản đã mở',
+      'Tài khoản của bạn đã được khôi phục.',
+    );
+    return user;
   }
 
   async forceVerifyEmail(id: string): Promise<User> {
@@ -178,7 +196,12 @@ export class AdminService {
       is_verified: dto.isVerified ?? true,
       is_active: true,
     });
-    return this.foodRepo.save(food);
+    const savedFood = await this.foodRepo.save(food);
+    const activeUsers = await this.userRepo.find({ select: ['id'], where: { is_active: true } });
+    if (activeUsers.length) {
+      await this.notificationsService.createMany(activeUsers.map(u => u.id), NotificationType.SYSTEM, "🍱 Thực phẩm mới", "Admin vừa thêm: " + dto.name);
+    }
+    return savedFood;
   }
 
   async updateFood(id: string, dto: UpdateFoodAdminDto): Promise<Food> {
@@ -255,7 +278,12 @@ export class AdminService {
       instructions: dto.instructions,
       videoUrl: dto.videoUrl,
     });
-    return this.exerciseRepo.save(exercise);
+    const savedExercise = await this.exerciseRepo.save(exercise);
+    const activeUsers = await this.userRepo.find({ select: ['id'], where: { is_active: true } });
+    if (activeUsers.length) {
+      await this.notificationsService.createMany(activeUsers.map(u => u.id), NotificationType.SYSTEM, "💪 Bài tập mới", "Admin vừa thêm: " + dto.name);
+    }
+    return savedExercise;
   }
 
   async updateExercise(

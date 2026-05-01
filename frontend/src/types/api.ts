@@ -173,7 +173,7 @@ export interface Notification {
   id: string
   userId: string
   title: string
-  message: string
+  body: string
   type: string
   isRead: boolean
   createdAt: string
@@ -232,4 +232,12 @@ export interface TrainingTip {
   sportCategory?: string
   muscleGroup?: string
   imageUrl?: string
+}
+
+export interface BodyProgressPhoto {
+  id: string;
+  photoUrl: string;
+  photoType: 'front' | 'back' | 'side';
+  takenAt: string;
+  bodyMetricId?: string;
 }

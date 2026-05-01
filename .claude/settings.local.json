@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PGPASSWORD=123456 psql -h localhost -p 5433 -U postgres -d calories_tracker -c \"\\\\dt\")"
+    ]
+  }
+}
