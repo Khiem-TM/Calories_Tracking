@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useDailyDashboard } from '@/features/dashboard/hooks/useDashboard'
 import { useActivityLogs, useLogWater } from '@/features/activity-logs/hooks/useActivityLogs'
 import { useLatestBodyMetrics } from '@/features/body-metrics/hooks/useBodyMetrics'
+import { useAuthStore } from '@/stores/authStore'
 import { CardSkeleton } from '@/components/common/LoadingSkeleton'
 import { ErrorState } from '@/components/common/ErrorState'
 import '@/assets/dashboard.css'
@@ -15,6 +16,7 @@ function getViDate(d: Date) {
 }
 
 export default function DashboardPage() {
+  const { user } = useAuthStore()
   const [date] = useState(new Date())
   const dateStr = formatDate(date)
 
@@ -29,16 +31,20 @@ export default function DashboardPage() {
   if (error) return <div className="content"><ErrorState onRetry={() => refetch()} /></div>
 
   const d = data ?? {}
+  const nutrition = d.nutrition ?? {}
+  const activity = d.activity ?? {}
+  const body = d.body ?? {}
+
   const goal = d.calorieGoal ?? 2000
-  const total = Math.round(d.totalCalories ?? 0)
+  const total = Math.round(nutrition.totalCalories ?? 0)
   const carbGoal = d.carbsGoal ?? Math.round((goal * 0.5) / 4)
   const proGoal = d.proteinGoal ?? Math.round((goal * 0.2) / 4)
   const fatGoal = d.fatGoal ?? Math.round((goal * 0.3) / 9)
-  const carbTotal = Math.round(d.totalCarbs ?? 0)
-  const proTotal = Math.round(d.totalProtein ?? 0)
-  const fatTotal = Math.round(d.totalFat ?? 0)
-  const calsBurned = activityData?.caloriesBurned ?? 0
-  const waterMl = activityData?.waterMl ?? 0
+  const carbTotal = Math.round(nutrition.totalCarbs ?? 0)
+  const proTotal = Math.round(nutrition.totalProtein ?? 0)
+  const fatTotal = Math.round(nutrition.totalFat ?? 0)
+  const calsBurned = activity.caloriesBurned ?? 0
+  const waterMl = activity.waterMl ?? 0
   const waterGlasses = Math.floor(waterMl / 250)
   const waterGoal = d.waterGoal ?? 8
 
@@ -53,7 +59,7 @@ export default function DashboardPage() {
   const proOffset = carbFill
   const fatOffset = carbFill + proFill
 
-  const meals = d.meals ?? []
+  const meals = nutrition.mealLogs ?? []
   const mealEmojis: Record<string, string> = {
     BREAKFAST: '🌅', breakfast: '🌅',
     LUNCH: '☀️', lunch: '☀️',
@@ -70,7 +76,7 @@ export default function DashboardPage() {
   }
 
   const cups = Array.from({ length: waterGoal })
-  const userInitial = 'A'
+  const userInitial = user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'
 
   return (
     <>
@@ -89,7 +95,7 @@ export default function DashboardPage() {
           </button>
           <div className="db-user-pill">
             <div className="ava">{userInitial}</div>
-            Nguyễn A.
+            {user?.displayName ?? 'Người dùng'}
             <svg width="12" height="12" fill="none" viewBox="0 0 12 12"><path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </div>
         </div>
@@ -222,7 +228,7 @@ export default function DashboardPage() {
               const mealType = meal.mealType ?? meal.meal_type ?? ''
               const items: any[] = meal.items ?? []
               const itemNames = items.slice(0, 3).map((i: any) => i.food?.name ?? '').filter(Boolean).join(', ')
-              const totalCals = Math.round(items.reduce((s: number, i: any) => s + (i.calories ?? i.calories_snapshot ?? 0), 0))
+              const totalCals = Math.round(items.reduce((s: number, i: any) => s + (i.caloriesSnapshot || i.calories_snapshot || 0), 0))
               return (
                 <div className="db-meal-row" key={meal.id}>
                   <div className="db-meal-icon" style={{ background: mealBg[mealType] ?? '#f8faf9' }}>

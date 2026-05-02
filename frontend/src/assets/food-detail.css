@@ -1,0 +1,434 @@
+.food-detail-container {
+  padding: 40px 10%;
+  color: #1a2e1f;
+  background-color: #f8faf9;
+  min-height: 100vh;
+}
+
+.detail-breadcrumb {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #7a9080;
+  margin-bottom: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-breadcrumb a {
+  color: #7a9080;
+  text-decoration: none;
+}
+
+.detail-breadcrumb span {
+  opacity: 0.5;
+}
+
+.detail-main-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 60px;
+  margin-bottom: 60px;
+}
+
+/* GALLERY */
+.detail-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.main-image-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #e5e7e6;
+}
+
+.main-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-badges {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.badge-verified {
+  background: #3a8f67;
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 50px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.badge-premium {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1a2e1f;
+  padding: 6px 14px;
+  border-radius: 50px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.image-thumbs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+}
+
+.thumb-wrap,
+.thumb-more,
+.thumb-video {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.thumb-wrap:hover {
+  transform: scale(1.05);
+}
+
+.thumb-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumb-more {
+  background: #eef1ef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #3a8f67;
+}
+
+.thumb-video {
+  background: #d1e1d8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3a8f67;
+}
+
+/* CORE INFO */
+.food-title {
+  font-family: "Playfair Display", serif;
+  font-size: 48px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  line-height: 1.1;
+}
+
+.food-scientific {
+  font-size: 18px;
+  color: #7a9080;
+  margin-bottom: 40px;
+}
+
+.info-stats-row {
+  display: flex;
+  gap: 40px;
+  margin-bottom: 40px;
+}
+
+.info-stat label {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #7a9080;
+  margin-bottom: 6px;
+}
+
+.info-stat span {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.food-description {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #5a6b5f;
+  margin-bottom: 40px;
+}
+
+.serving-selector-box {
+  background: #fff;
+  border: 1px solid #eef1ef;
+  border-radius: 16px;
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.serving-label label {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  color: #7a9080;
+  margin-bottom: 4px;
+}
+
+.serving-label span {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: "Playfair Display", serif;
+  color: #3a8f67;
+  font-style: italic;
+}
+
+.counter-wrap {
+  display: flex;
+  align-items: center;
+  background: #f8faf9;
+  border-radius: 50px;
+  padding: 4px;
+}
+
+.counter-wrap button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #fff;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #1a2e1f;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.counter-wrap input {
+  width: 40px;
+  border: none;
+  background: none;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a2e1f;
+}
+
+.action-row {
+  display: flex;
+  gap: 16px;
+}
+
+.btn-add-diary {
+  flex: 1;
+  background: #3a8f67;
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  padding: 18px;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition:
+    transform 0.2s,
+    background 0.2s;
+}
+
+.btn-add-diary:hover {
+  background: #2e7a56;
+  transform: translateY(-2px);
+}
+
+.btn-share {
+  flex: 1;
+  background: #eef1ef;
+  color: #1a2e1f;
+  border: none;
+  border-radius: 50px;
+  padding: 18px;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+/* METRICS */
+.metrics-section {
+  margin-bottom: 60px;
+}
+
+.section-title {
+  font-family: "Playfair Display", serif;
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.section-title span {
+  font-size: 11px;
+  font-family: "DM Sans", sans-serif;
+  color: #7a9080;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.metric-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.metric-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.metric-icon.cals {
+  background: #f0f7f4;
+}
+.metric-icon.protein {
+  background: #fff7ed;
+}
+.metric-icon.fat {
+  background: #f0f7f4;
+}
+
+.metric-info label {
+  font-size: 10px;
+  font-weight: 800;
+  color: #7a9080;
+  letter-spacing: 1px;
+}
+
+.metric-val {
+  font-size: 24px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.metric-val span {
+  font-size: 13px;
+  font-weight: 400;
+  color: #7a9080;
+}
+
+.metric-progress-wrap {
+  height: 6px;
+  background: #f0f1f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.metric-progress {
+  height: 100%;
+  border-radius: 10px;
+}
+
+/* CLINICAL PROFILE */
+.clinical-section {
+  background: #f0f7f4;
+  border-radius: 20px;
+  padding: 40px;
+}
+
+.clinical-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.clinical-header h3 {
+  font-family: "Playfair Display", serif;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.clinical-badge {
+  background: #d4e7df;
+  color: #3a8f67;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+}
+
+.clinical-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 30px;
+  margin-bottom: 40px;
+}
+
+.clinical-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.clinical-item label {
+  font-size: 13px;
+  color: #5a6b5f;
+}
+
+.clinical-item span {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.clinical-footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  padding-top: 30px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 30px;
+}
+
+.footer-meta {
+  font-size: 10px;
+  font-weight: 800;
+  color: #7a9080;
+  letter-spacing: 0.5px;
+}
+
+.status-verified {
+  color: #3a8f67;
+}

@@ -7,11 +7,11 @@ export const workoutService = {
   toggleFavoriteExercise: (id: string, isFav: boolean) =>
     isFav ? api.delete(`/training/exercises/${id}/favorite`) : api.post(`/training/exercises/${id}/favorite`),
   getWorkoutHistory: (params?: { limit?: number; fromDate?: string; toDate?: string }) =>
-    api.get('/training/history', { params }),
+    api.get('/training/sessions', { params }),
   logWorkout: (data: { exercises: object[]; date: string; duration?: number; notes?: string }) =>
-    api.post('/training/workout', data),
-  updateWorkout: (id: string, data: object) => api.patch(`/training/workout/${id}`, data),
-  deleteWorkout: (id: string) => api.delete(`/training/workout/${id}`),
+    api.post('/training/sessions', data),
+  updateWorkout: (id: string, data: object) => api.patch(`/training/sessions/${id}`, data),
+  deleteWorkout: (id: string) => api.delete(`/training/sessions/${id}`),
   getTips: (params?: { page?: number; limit?: number; sport_category?: string; muscle_group?: string }) =>
     api.get('/training/tips', { params }),
   getGoals: () => api.get('/training/goals'),

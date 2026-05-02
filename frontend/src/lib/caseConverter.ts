@@ -4,7 +4,7 @@ export const toSnake = (str: string) => str.replace(/[A-Z]/g, (letter) => `_${le
 export const keysToCamel = (obj: any): any => {
   if (Array.isArray(obj)) {
     return obj.map(v => keysToCamel(v));
-  } else if (obj !== null && obj.constructor === Object) {
+  } else if (obj !== null && typeof obj === 'object' && !(obj instanceof Date)) {
     return Object.keys(obj).reduce((result, key) => {
       result[toCamel(key) as keyof typeof result] = keysToCamel(obj[key]);
       return result;
@@ -16,7 +16,7 @@ export const keysToCamel = (obj: any): any => {
 export const keysToSnake = (obj: any): any => {
   if (Array.isArray(obj)) {
     return obj.map(v => keysToSnake(v));
-  } else if (obj !== null && obj.constructor === Object) {
+  } else if (obj !== null && typeof obj === 'object' && !(obj instanceof Date)) {
     return Object.keys(obj).reduce((result, key) => {
       result[toSnake(key) as keyof typeof result] = keysToSnake(obj[key]);
       return result;

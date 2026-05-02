@@ -1,18 +1,24 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { mealLogService } from '../services/mealLogService'
+import { useAuthStore } from '@/stores/authStore'
+import type { MealLog } from '@/types/api'
 
 export function useDailyMealLogs(date?: string) {
+  const token = useAuthStore((s) => s.accessToken)
   return useQuery({
     queryKey: ['meal-logs', 'daily', date],
-    queryFn: () => mealLogService.getDaily(date).then((r) => r.data?.data ?? r.data),
+    queryFn: () => mealLogService.getDaily(date).then((r) => (r.data?.data ?? r.data) as MealLog[]),
+    enabled: !!token,
   })
 }
 
 export function useMealLogSummary(date?: string) {
+  const token = useAuthStore((s) => s.accessToken)
   return useQuery({
     queryKey: ['meal-logs', 'summary', date],
     queryFn: () => mealLogService.getSummary(date).then((r) => r.data?.data ?? r.data),
+    enabled: !!token,
   })
 }
 

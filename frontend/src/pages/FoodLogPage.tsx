@@ -34,11 +34,66 @@ export default function FoodLogPage() {
   const { data: dashboardData } = useDailyDashboard(dateStr)
   const { data: activityData } = useActivityLogs(dateStr)
   const { mutate: deleteItem } = useDeleteMealItem()
+  
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [viewDate, setViewDate] = useState(new Date())
 
-  const mealList: MealLog[] = Array.isArray(meals) ? meals : ((meals as any)?.meals ?? [])
+  const mealList: MealLog[] = meals ?? []
 
   const prevDay = () => { const d = new Date(date); d.setDate(d.getDate() - 1); setDate(d) }
   const nextDay = () => { if (!isToday) { const d = new Date(date); d.setDate(d.getDate() + 1); setDate(d) } }
+
+  const handleDateSelect = (d: Date) => {
+    if (d > new Date()) return
+    setDate(d)
+    setShowCalendar(false)
+  }
+
+  // Calendar logic
+  const renderCalendar = () => {
+    const year = viewDate.getFullYear()
+    const month = viewDate.getMonth()
+    const firstDay = new Date(year, month, 1).getDay()
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    
+    const days = []
+    for (let i = 0; i < firstDay; i++) days.push(null)
+    for (let d = 1; d <= daysInMonth; d++) days.push(new Date(year, month, d))
+
+    const monthNames = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"]
+
+    return (
+      <div className="cal-modal-overlay" onClick={() => setShowCalendar(false)}>
+        <div className="cal-modal-content" onClick={e => e.stopPropagation()}>
+          <div className="cal-header">
+            <button onClick={() => setViewDate(new Date(year, month - 1))}>‹</button>
+            <span>{monthNames[month]} {year}</span>
+            <button onClick={() => setViewDate(new Date(year, month + 1))}>›</button>
+          </div>
+          <div className="cal-weekdays">
+            {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map(d => <div key={d}>{d}</div>)}
+          </div>
+          <div className="cal-days">
+            {days.map((d, i) => {
+              if (!d) return <div key={`empty-${i}`} className="cal-day empty" />
+              const isSel = formatDate(d) === dateStr
+              const isFut = d > new Date()
+              return (
+                <div 
+                  key={i} 
+                  className={`cal-day ${isSel ? 'selected' : ''} ${isFut ? 'future' : ''}`}
+                  onClick={() => !isFut && handleDateSelect(d)}
+                >
+                  {d.getDate()}
+                </div>
+              )
+            })}
+          </div>
+          <button className="cal-today-btn" onClick={() => handleDateSelect(new Date())}>Hôm nay</button>
+        </div>
+      </div>
+    )
+  }
 
   // Group by meal type
   const groupedMeals = MEAL_TYPES.map(type => {
@@ -47,22 +102,25 @@ export default function FoodLogPage() {
       return mt === type.id
     })
     const items = logs.flatMap(m => m.items ?? [])
-    const totalCals = Math.round(items.reduce((s, i) => s + ((i as any).calories ?? (i as any).calories_snapshot ?? 0), 0))
+    const totalCals = Math.round(items.reduce((s, i) => s + ((i as any).caloriesSnapshot ?? 0), 0))
     return { ...type, logs, items, totalCals }
   })
 
   // Summary data
   const d: any = dashboardData ?? {}
+  const nutrition = d.nutrition ?? {}
+  const activity = d.activity ?? {}
+
   const goalCalories = d.calorieGoal ?? 2000
-  const totalEaten = Math.round(d.totalCalories ?? 0)
-  const calsBurned = activityData?.caloriesBurned ?? 0
+  const totalEaten = Math.round(nutrition.totalCalories ?? 0)
+  const calsBurned = activity.caloriesBurned ?? 0
   const remaining = Math.max(goalCalories - totalEaten, 0)
   const carbGoal = d.carbsGoal ?? Math.round((goalCalories * 0.5) / 4)
   const proGoal = d.proteinGoal ?? Math.round((goalCalories * 0.2) / 4)
   const fatGoal = d.fatGoal ?? Math.round((goalCalories * 0.3) / 9)
-  const carbTotal = Math.round(d.totalCarbs ?? 0)
-  const proTotal = Math.round(d.totalProtein ?? 0)
-  const fatTotal = Math.round(d.totalFat ?? 0)
+  const carbTotal = Math.round(nutrition.totalCarbs ?? 0)
+  const proTotal = Math.round(nutrition.totalProtein ?? 0)
+  const fatTotal = Math.round(nutrition.totalFat ?? 0)
 
   const waterMl = activityData?.waterMl ?? 0
   const waterGlasses = Math.floor(waterMl / 250)
@@ -86,7 +144,7 @@ export default function FoodLogPage() {
             <div className="fl-date-sub">Nhật ký ăn uống</div>
           </div>
           <button className="fl-nav-btn" onClick={nextDay} disabled={isToday} style={{ opacity: isToday ? 0.3 : 1 }}>›</button>
-          <button className="fl-calendar-btn" title="Chọn ngày">
+          <button className="fl-calendar-btn" title="Chọn ngày" onClick={() => setShowCalendar(true)}>
             <svg width="15" height="15" fill="none" viewBox="0 0 15 15">
               <rect x=".75" y="1.75" width="13.5" height="12.5" rx="2.25" stroke="currentColor" strokeWidth="1.2"/>
               <path d="M5 .75v2M10 .75v2M.75 5.75h13.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
@@ -102,6 +160,9 @@ export default function FoodLogPage() {
           </button>
         </div>
       </div>
+
+      {/* ===== CALENDAR MODAL ===== */}
+      {showCalendar && renderCalendar()}
 
       {/* ===== BODY ===== */}
       {isLoading ? (
@@ -139,11 +200,11 @@ export default function FoodLogPage() {
                       const food = item.food ?? {}
                       const qty = item.quantity ?? item.quantity_in_grams ?? 0
                       const unit = item.serving_unit ?? 'g'
-                      const cals = Math.round(item.calories ?? item.calories_snapshot ?? 0)
-                      const carbG = Math.round(item.carbs ?? item.carbs_snapshot ?? 0)
-                      const fatG = Math.round(item.fat ?? item.fat_snapshot ?? 0)
-                      const proG = Math.round(item.protein ?? item.protein_snapshot ?? 0)
-                      const imgUrl = food.image_urls?.[0] ?? food.imageUrl ?? null
+                      const cals = Math.round(item.caloriesSnapshot ?? 0)
+                      const carbG = Math.round(item.carbsSnapshot ?? 0)
+                      const fatG = Math.round(item.fatSnapshot ?? 0)
+                      const proG = Math.round(item.proteinSnapshot ?? 0)
+                      const imgUrl = food.imageUrls?.[0] ?? food.imageUrl ?? null
 
                       return (
                         <div className="fl-food-item" key={item.id}>

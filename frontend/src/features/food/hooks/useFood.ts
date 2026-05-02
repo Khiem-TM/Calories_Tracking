@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { foodService } from '../services/foodService'
 import { toast } from 'sonner'
+import type { Food, PaginatedResponse } from '@/types/api'
 
 export function useFoodSearch(search: string, page = 1) {
   return useQuery({
     queryKey: ['foods', 'search', search, page],
-    queryFn: () => foodService.search({ search, page, limit: 20 }).then((r) => r.data?.data ?? r.data),
+    queryFn: () => foodService.search({ search, page, limit: 20 }).then((r) => (r.data?.data ?? r.data) as PaginatedResponse<Food>),
     enabled: search.length > 0,
   })
 }
@@ -13,14 +14,14 @@ export function useFoodSearch(search: string, page = 1) {
 export function useFoodExplore(category?: string, page = 1) {
   return useQuery({
     queryKey: ['foods', 'explore', category, page],
-    queryFn: () => foodService.explore({ category, page, limit: 20 }).then((r) => r.data?.data ?? r.data),
+    queryFn: () => foodService.explore({ category, page, limit: 20 }).then((r) => (r.data?.data ?? r.data) as PaginatedResponse<Food>),
   })
 }
 
 export function useFoodDetail(id: string) {
   return useQuery({
     queryKey: ['foods', id],
-    queryFn: () => foodService.getById(id).then((r) => r.data?.data ?? r.data),
+    queryFn: () => foodService.getById(id).then((r) => (r.data?.data ?? r.data) as Food),
     enabled: !!id,
   })
 }

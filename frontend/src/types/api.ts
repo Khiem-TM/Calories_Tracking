@@ -54,16 +54,25 @@ export interface AuthResponse {
 export interface Food {
   id: string
   name: string
-  calories: number
-  protein: number
-  carbs: number
-  fat: number
+  nameEn?: string
+  brand?: string
   category?: string
-  imageUrl?: string
+  foodType: string
+  description?: string
+  caloriesPer100g: number
+  proteinPer100g: number
+  carbsPer100g: number
+  fatPer100g: number
+  fiberPer100g?: number
+  sugarPer100g?: number
+  sodiumPer100g?: number
+  cholesterolPer100g?: number
+  servingSizeG: number
+  servingUnit: string
+  imageUrls?: string[]
   isVerified: boolean
   isCustom: boolean
-  servingSize?: number
-  servingUnit?: string
+  favoritesCount?: number
 }
 
 export interface MealLog {

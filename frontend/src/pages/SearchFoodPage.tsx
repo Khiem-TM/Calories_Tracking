@@ -79,7 +79,7 @@ export default function SearchFoodPage() {
 
   const addFoodToLog = async (food: Food, amountMultiplier: number) => {
     try {
-      const mealList = Array.isArray(dailyLogs) ? dailyLogs : (dailyLogs?.meals ?? [])
+      const mealList = dailyLogs ?? []
       // Backend stores meal_type as uppercase (BREAKFAST, LUNCH, etc.)
       const mealTypeUpper = mealTarget.toUpperCase()
       let targetLog = mealList.find((m: any) =>
@@ -94,7 +94,8 @@ export default function SearchFoodPage() {
       }
 
       if (targetLog?.id) {
-        const qty = (food.servingSize ?? 100) * amountMultiplier
+        const servingG = food.servingSizeG || (food as any).serving_size_g || 100
+        const qty = servingG * amountMultiplier
         await addItem({ mealLogId: targetLog.id, foodId: food.id, quantity: qty })
         navigate('/food-log')
       } else {
@@ -168,23 +169,23 @@ export default function SearchFoodPage() {
                   <div 
                     key={food.id} 
                     className={`result-item ${selectedFoodId === food.id ? 'selected' : ''}`} 
-                    onClick={() => handleSelectFood(food)}
+                    onClick={() => navigate(`/food/${food.id}`)}
                   >
                     <div className="food-avatar">{getFoodEmoji(food.name)}</div>
                     <div className="result-info">
                       <div className="result-name">{food.name}</div>
                       <div className="result-brand">{food.category || 'Chung'}</div>
                       <div className="result-macro">
-                        <span>C: {food.carbs}g</span>
-                        <span>P: {food.protein}g</span>
-                        <span>F: {food.fat}g</span>
+                        <span>C: {food.carbsPer100g}g</span>
+                        <span>P: {food.proteinPer100g}g</span>
+                        <span>F: {food.fatPer100g}g</span>
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div className="result-cal">{food.calories}</div>
-                      <div className="result-cal-unit">kcal/{food.servingSize}{food.servingUnit || 'g'}</div>
+                      <div className="result-cal">{food.caloriesPer100g}</div>
+                      <div className="result-cal-unit">kcal/{food.servingSizeG}{food.servingUnit}</div>
                     </div>
-                    <button className="add-btn-sm" onClick={(e) => handleQuickAdd(e, food)}>+</button>
+                    <button className="add-btn-sm" onClick={(e) => { e.stopPropagation(); handleSelectFood(food); }}>+</button>
                   </div>
                 ))}
               </div>
@@ -214,31 +215,31 @@ export default function SearchFoodPage() {
                     step="0.5" 
                     onChange={e => setPortion(parseFloat(e.target.value) || 1)} 
                   />
-                  <div className="portion-unit">phần ({selectedFood.servingSize || 100}g)</div>
+                  <div className="portion-unit">phần ({selectedFood.servingSizeG || 100}g)</div>
                 </div>
 
                 <div style={{ background: 'var(--green-cta)', color: '#fff', borderRadius: 12, padding: 14, textAlign: 'center', marginBottom: 16 }}>
                   <div style={{ fontSize: 28, fontWeight: 700, fontFamily: "'Playfair Display',serif" }}>
-                    {Math.round((selectedFood.calories ?? 0) * portion)}
+                    {Math.round(selectedFood.caloriesPer100g * portion)}
                   </div>
                   <div style={{ fontSize: 11, opacity: 0.7 }}>Calories</div>
                 </div>
 
                 <div className="nut-grid">
                   <div className="nut-box">
-                    <div className="nut-val">{((selectedFood.carbs ?? 0) * portion).toFixed(1)}g</div>
+                    <div className="nut-val">{(selectedFood.carbsPer100g * portion).toFixed(1)}g</div>
                     <div className="nut-lbl">Carbs</div>
                   </div>
                   <div className="nut-box">
-                    <div className="nut-val">{((selectedFood.protein ?? 0) * portion).toFixed(1)}g</div>
+                    <div className="nut-val">{(selectedFood.proteinPer100g * portion).toFixed(1)}g</div>
                     <div className="nut-lbl">Protein</div>
                   </div>
                   <div className="nut-box">
-                    <div className="nut-val">{((selectedFood.fat ?? 0) * portion).toFixed(1)}g</div>
+                    <div className="nut-val">{(selectedFood.fatPer100g * portion).toFixed(1)}g</div>
                     <div className="nut-lbl">Fat</div>
                   </div>
                   <div className="nut-box">
-                    <div className="nut-val">0g</div>
+                    <div className="nut-val">{((selectedFood.fiberPer100g || 0) * portion).toFixed(1)}g</div>
                     <div className="nut-lbl">Chất xơ</div>
                   </div>
                 </div>
