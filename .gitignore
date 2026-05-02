@@ -4,3 +4,10 @@ stitch
 backend/src/database
 foods_with_scraped_urls.json
 design
+
+# Android/Gradle
+**/.gradle/
+**/build/
+.idea/
+*.iml
+local.properties

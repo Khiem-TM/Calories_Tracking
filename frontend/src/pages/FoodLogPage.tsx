@@ -64,7 +64,8 @@ export default function FoodLogPage() {
   const proTotal = Math.round(d.totalProtein ?? 0)
   const fatTotal = Math.round(d.totalFat ?? 0)
 
-  const waterIntake = activityData?.waterIntake ?? 0
+  const waterMl = activityData?.waterMl ?? 0
+  const waterGlasses = Math.floor(waterMl / 250)
   const waterGoal = d.waterGoal ?? 8
 
   // Donut for energy overview (green ring)
@@ -247,11 +248,11 @@ export default function FoodLogPage() {
                 <div className="fl-water-icon">💧</div>
                 <div className="fl-water-text-col">
                   <div className="fl-water-text-label">Nước</div>
-                  <div className="fl-water-text-val">{waterIntake} / {waterGoal} ly ({waterIntake * 250}ml)</div>
+                  <div className="fl-water-text-val">{waterGlasses} / {waterGoal} ly ({waterMl}ml)</div>
                 </div>
                 <button
                   className="fl-water-add-btn"
-                  onClick={() => logWater({ date: dateStr, glasses: waterIntake + 1 })}
+                  onClick={() => logWater({ logDate: dateStr, waterMl: waterMl + 250 })}
                   title="Thêm 1 ly"
                 >
                   +

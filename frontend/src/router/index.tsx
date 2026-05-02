@@ -20,6 +20,7 @@ const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage'))
 const ForgotPasswordPage = lazy(() => import('@/pages/auth/ForgotPasswordPage'))
 const ResetPasswordPage = lazy(() => import('@/pages/auth/ResetPasswordPage'))
 const VerifyEmailPage = lazy(() => import('@/pages/auth/VerifyEmailPage'))
+const OAuthCallbackPage = lazy(() => import('@/pages/auth/OAuthCallbackPage'))
 
 // Protected pages
 const OnboardingPage = lazy(() => import('@/pages/OnboardingPage'))
@@ -59,6 +60,7 @@ export function AppRouter() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/oauth-callback" element={<OAuthCallbackPage />} />
         </Route>
 
         {/* Onboarding (auth required, no sidebar) */}

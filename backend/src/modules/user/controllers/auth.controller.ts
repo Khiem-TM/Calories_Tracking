@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Get, Req } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Get, Req, Res, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiExcludeEndpoint } from '@nestjs/swagger';
@@ -44,12 +44,16 @@ export class AuthController {
     return this.authService.refreshToken(token);
   }
 
-  @ApiOperation({ summary: 'Logout' })
+  @ApiOperation({ summary: 'Logout — pass refresh_token in body to revoke only current device' })
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
   @Post('logout')
-  async logout(@CurrentUser() user: JwtPayload): Promise<{ message: string }> {
-    await this.authService.logout(user.sub);
+  async logout(
+    @CurrentUser() user: JwtPayload,
+    @Body('refresh_token') refreshToken?: string,
+  ): Promise<{ message: string }> {
+    await this.authService.logout(user.sub, refreshToken);
     return { message: 'Logged out successfully' };
   }
 
@@ -88,11 +92,13 @@ export class AuthController {
     // Passport redirects automatically
   }
 
-  @ApiOperation({ summary: 'Google OAuth callback — returns JWT tokens' })
+  @ApiOperation({ summary: 'Google OAuth callback — redirects to frontend with tokens' })
   @ApiExcludeEndpoint()
   @UseGuards(AuthGuard('google'))
   @Get('google/callback')
-  googleCallback(@Req() req: { user: GoogleProfile }): Promise<AuthResponseDto> {
-    return this.authService.googleLogin(req.user);
+  async googleCallback(@Req() req: { user: GoogleProfile }, @Res() res: any): Promise<void> {
+    const authData = await this.authService.googleLogin(req.user);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}/oauth-callback?accessToken=${authData.access_token}&refreshToken=${authData.refresh_token}`);
   }
 }

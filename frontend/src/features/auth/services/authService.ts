@@ -6,7 +6,7 @@ export const authService = {
     api.post<{ data: AuthResponse }>('/auth/login', { email, password }),
 
   register: (email: string, password: string, displayName: string) =>
-    api.post('/auth/register', { email, password, displayName }),
+    api.post('/auth/register', { email, password, display_name: displayName }),
 
   logout: () => api.post('/auth/logout'),
 
@@ -16,14 +16,14 @@ export const authService = {
   forgotPassword: (email: string) =>
     api.post('/auth/forgot-password', { email }),
 
-  resetPassword: (resetToken: string, newPassword: string) =>
-    api.post('/auth/reset-password', { reset_token: resetToken, new_password: newPassword }),
+  resetPassword: (token: string, newPassword: string) =>
+    api.post('/auth/reset-password', { token, newPassword }),
 
   sendVerification: (email: string) =>
     api.post('/auth/send-verification', { email }),
 
-  verifyEmail: (email: string, code: string) =>
-    api.post('/auth/verify-email', { email, verification_code: code }),
+  verifyEmail: (token: string) =>
+    api.post('/auth/verify-email', { token }),
 
   getMe: () => api.get('/users/me'),
 }

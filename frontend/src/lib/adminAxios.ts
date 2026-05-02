@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useAdminAuthStore } from '@/stores/adminAuthStore'
+import { keysToCamel, keysToSnake } from './caseConverter'
 
 export const adminApi = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
@@ -15,7 +16,12 @@ adminApi.interceptors.request.use((config) => {
 })
 
 adminApi.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.data) {
+      response.data = keysToCamel(response.data)
+    }
+    return response
+  },
   (error) => {
     if (error.response?.status === 401) {
       useAdminAuthStore.getState().logout()

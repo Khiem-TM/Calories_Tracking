@@ -38,7 +38,8 @@ export default function DashboardPage() {
   const proTotal = Math.round(d.totalProtein ?? 0)
   const fatTotal = Math.round(d.totalFat ?? 0)
   const calsBurned = activityData?.caloriesBurned ?? 0
-  const waterIntake = activityData?.waterIntake ?? 0
+  const waterMl = activityData?.waterMl ?? 0
+  const waterGlasses = Math.floor(waterMl / 250)
   const waterGoal = d.waterGoal ?? 8
 
   const calPercent = goal > 0 ? Math.min((total / goal) * 100, 100) : 0
@@ -246,17 +247,17 @@ export default function DashboardPage() {
               <span style={{ fontSize: 22 }}>💧</span>
               <div>
                 <div className="db-water-label">Nước đã uống</div>
-                <div className="db-water-value">{waterIntake} <small>/ {waterGoal} L</small></div>
+                <div className="db-water-value">{waterGlasses} <small>/ {waterGoal} ly</small></div>
               </div>
             </div>
             <div className="db-water-cups">
               {cups.map((_, i) => (
-                <div key={i} className={`db-water-cup ${i < waterIntake ? 'filled' : ''}`} />
+                <div key={i} className={`db-water-cup ${i < waterGlasses ? 'filled' : ''}`} />
               ))}
             </div>
             <button
               className="db-add-250-btn"
-              onClick={() => logWater({ date: dateStr, glasses: waterIntake + 1 })}
+              onClick={() => logWater({ logDate: dateStr, waterMl: waterMl + 250 })}
             >
               + Thêm 250ml
             </button>

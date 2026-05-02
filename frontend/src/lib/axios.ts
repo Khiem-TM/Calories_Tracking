@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/authStore'
+import { keysToCamel, keysToSnake } from './caseConverter'
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
@@ -23,7 +24,12 @@ const processQueue = (error: unknown, token: string | null) => {
 }
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.data) {
+      response.data = keysToCamel(response.data)
+    }
+    return response
+  },
   async (error) => {
     const original = error.config
     if (error.response?.status === 401 && !original._retry) {

@@ -4,11 +4,10 @@ import {
   UnauthorizedException,
   NotFoundException,
   ForbiddenException,
-  ConflictException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { User } from '../entities/user.entity';
@@ -41,17 +40,22 @@ export class AuthService {
 
   //  Tạo token truy cập
   private async generateAuthResponse(user: User): Promise<AuthResponseDto> {
+    const jwtSecret = process.env.JWT_SECRET;
+    const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET;
+    if (!jwtSecret || !jwtRefreshSecret) {
+      throw new Error('JWT_SECRET and JWT_REFRESH_SECRET must be defined in environment');
+    }
+
+    const ACCESS_TTL_SECONDS = 15 * 60; // 15 minutes
+
     const access_token = this.jwtService.sign(
       { sub: user.id, email: user.email, role: user.role },
-      { secret: process.env.JWT_SECRET || 'khiemhehe', expiresIn: '15m' },
+      { secret: jwtSecret, expiresIn: ACCESS_TTL_SECONDS },
     );
 
     const refresh_token = this.jwtService.sign(
       { sub: user.id },
-      {
-        secret: process.env.JWT_REFRESH_SECRET || 'khiemhehe',
-        expiresIn: '30d',
-      },
+      { secret: jwtRefreshSecret, expiresIn: '30d' },
     );
 
     const token_hash = await bcrypt.hash(refresh_token, 10);
@@ -67,11 +71,15 @@ export class AuthService {
     return {
       access_token,
       refresh_token,
+      token_type: 'Bearer',
+      expires_in: ACCESS_TTL_SECONDS,
       user: {
         id: user.id,
         email: user.email,
         display_name: user.display_name,
+        avatar_url: user.avatar_url ?? null,
         role: user.role,
+        is_verified: user.is_verified,
       },
     };
   }
@@ -136,21 +144,36 @@ export class AuthService {
     return this.generateAuthResponse(user);
   }
 
-  async logout(user_sub: string): Promise<void> {
+  async logout(user_sub: string, refreshToken?: string): Promise<void> {
+    if (refreshToken) {
+      const tokens = await this.refreshTokenRepository.find({
+        where: { user: { id: user_sub } },
+      });
+      for (const record of tokens) {
+        if (record.expires_at < new Date()) continue;
+        if (await bcrypt.compare(refreshToken, record.token_hash)) {
+          await this.refreshTokenRepository.delete(record.id);
+          return;
+        }
+      }
+    }
+    // Fallback: revoke all tokens (e.g. "logout all devices" or token not provided)
     await this.refreshTokenRepository.delete({ user: { id: user_sub } });
   }
 
-  async refreshToken(token: string): Promise<{ access_token: string }> {
+  async refreshToken(token: string): Promise<{ access_token: string; expires_in: number }> {
+    const jwtSecret = process.env.JWT_SECRET;
+    const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET;
+    if (!jwtSecret || !jwtRefreshSecret) {
+      throw new Error('JWT_SECRET and JWT_REFRESH_SECRET must be defined in environment');
+    }
+
     try {
-      const payload = this.jwtService.verify(token, {
-        secret: process.env.JWT_REFRESH_SECRET || 'khiemhehe',
-      });
-      const userId = payload.sub;
+      const payload = this.jwtService.verify(token, { secret: jwtRefreshSecret });
+      const userId = payload.sub as string;
 
       const user = await this.userRepository.findOne({ where: { id: userId } });
-      if (!user) {
-        throw new NotFoundException('User not found');
-      }
+      if (!user) throw new UnauthorizedException('Invalid refresh token');
 
       const refreshTokens = await this.refreshTokenRepository.find({
         where: { user: { id: userId } },
@@ -165,17 +188,17 @@ export class AuthService {
         }
       }
 
-      if (!isValidToken) {
-        throw new UnauthorizedException('Invalid refresh token');
-      }
+      if (!isValidToken) throw new UnauthorizedException('Invalid refresh token');
 
+      const ACCESS_TTL_SECONDS = 15 * 60;
       const access_token = this.jwtService.sign(
         { sub: user.id, email: user.email, role: user.role },
-        { secret: process.env.JWT_SECRET || 'khiemhehe', expiresIn: '15m' },
+        { secret: jwtSecret, expiresIn: ACCESS_TTL_SECONDS },
       );
 
-      return { access_token };
-    } catch {
+      return { access_token, expires_in: ACCESS_TTL_SECONDS };
+    } catch (err) {
+      if (err instanceof UnauthorizedException) throw err;
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
@@ -259,12 +282,16 @@ export class AuthService {
 
     if (user) {
       if (user.oauth_provider !== 'google') {
-        throw new ConflictException(
-          'An account with this email already exists. Please log in with email and password.',
-        );
-      }
-      // Update oauth_id if changed
-      if (user.oauth_id !== oauth_id) {
+        // Link Google to existing email/password account
+        await this.userRepository.update(user.id, {
+          oauth_provider: 'google',
+          oauth_id,
+          is_verified: true,
+        });
+        user.oauth_provider = 'google';
+        user.oauth_id = oauth_id;
+        user.is_verified = true;
+      } else if (user.oauth_id !== oauth_id) {
         await this.userRepository.update(user.id, { oauth_id });
         user.oauth_id = oauth_id;
       }

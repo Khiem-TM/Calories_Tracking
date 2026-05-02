@@ -12,7 +12,7 @@ export function useActivityLogs(date?: string) {
 export function useLogWater() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { date?: string; glasses: number }) =>
+    mutationFn: (data: { logDate: string; waterMl: number }) =>
       activityLogsService.logWater(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['activity-logs'] })
@@ -25,7 +25,7 @@ export function useLogWater() {
 export function useLogSteps() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { date?: string; steps: number }) =>
+    mutationFn: (data: { logDate: string; steps: number }) =>
       activityLogsService.logSteps(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['activity-logs'] })
@@ -38,7 +38,7 @@ export function useLogSteps() {
 export function useLogCaloriesBurned() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { date?: string; caloriesBurned: number }) =>
+    mutationFn: (data: { logDate: string; caloriesBurned: number; activeMinutes: number; exerciseNotes?: string }) =>
       activityLogsService.logCaloriesBurned(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['activity-logs'] })
@@ -47,3 +47,4 @@ export function useLogCaloriesBurned() {
     onError: () => toast.error('Không thể cập nhật calories đốt'),
   })
 }
+
