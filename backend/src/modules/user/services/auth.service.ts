@@ -5,6 +5,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
+import { OAuth2Client } from 'google-auth-library';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -119,6 +120,10 @@ export class AuthService {
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!user.password_hash) {
+      throw new UnauthorizedException('Tài khoản này đăng nhập bằng Google. Vui lòng sử dụng Google Sign-In.');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
@@ -273,6 +278,31 @@ export class AuthService {
     await this.mailerService.sendPasswordReset(email, token);
 
     return { message: 'If that email exists, a reset link has been sent.' };
+  }
+
+  async googleMobileLogin(idToken: string): Promise<AuthResponseDto> {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) throw new Error('GOOGLE_CLIENT_ID not configured');
+
+    const client = new OAuth2Client(clientId);
+    let payload: import('google-auth-library').TokenPayload;
+    try {
+      const ticket = await client.verifyIdToken({ idToken, audience: clientId });
+      const p = ticket.getPayload();
+      if (!p || !p.email) throw new UnauthorizedException('Invalid Google token');
+      payload = p;
+    } catch {
+      throw new UnauthorizedException('Invalid or expired Google token');
+    }
+
+    const googleProfile: GoogleProfile = {
+      email: payload.email!,
+      display_name: payload.name ?? payload.email!,
+      avatar_url: payload.picture ?? null,
+      oauth_id: payload.sub,
+    };
+
+    return this.googleLogin(googleProfile);
   }
 
   async googleLogin(googleProfile: GoogleProfile): Promise<AuthResponseDto> {

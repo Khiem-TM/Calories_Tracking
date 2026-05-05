@@ -9,6 +9,9 @@ import retrofit2.http.Body
 import retrofit2.http.POST
 
 interface AuthApi {
+    @POST("auth/google-mobile")
+    suspend fun googleMobileLogin(@Body body: Map<String, String>): Response<ApiResponse<AuthResponseDto>>
+
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): Response<ApiResponse<AuthResponseDto>>
 

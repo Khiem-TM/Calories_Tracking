@@ -44,6 +44,19 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun handleGoogleError(message: String) {
+        _authState.value = AuthState.Error(message)
+    }
+
+    fun loginWithGoogle(idToken: String) {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            authRepository.loginWithGoogle(idToken)
+                .onSuccess { _authState.value = AuthState.Success(it.user.displayName) }
+                .onFailure { _authState.value = AuthState.Error(it.message ?: "Đăng nhập Google thất bại") }
+        }
+    }
+
     fun resetState() {
         _authState.value = AuthState.Idle
     }

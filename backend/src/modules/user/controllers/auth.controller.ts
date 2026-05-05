@@ -9,6 +9,7 @@ import { AuthService } from '../services/auth.service';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
 import { AuthResponseDto } from '../dto/auth-response.dto';
+import { GoogleMobileLoginDto } from '../dto/google-mobile-login.dto';
 import {
   ForgotPasswordDto,
   ResetPasswordDto,
@@ -82,6 +83,13 @@ export class AuthController {
   @Post('reset-password')
   resetPassword(@Body() dto: ResetPasswordDto): Promise<{ message: string }> {
     return this.authService.resetPassword(dto.token, dto.newPassword);
+  }
+
+  @ApiOperation({ summary: 'Google Sign-In for mobile — exchange Google ID token for app JWT tokens' })
+  @Throttle({ short: { ttl: 60000, limit: 10 } })
+  @Post('google-mobile')
+  googleMobile(@Body() dto: GoogleMobileLoginDto): Promise<AuthResponseDto> {
+    return this.authService.googleMobileLogin(dto.id_token);
   }
 
   @ApiOperation({ summary: 'Redirect to Google OAuth consent screen' })

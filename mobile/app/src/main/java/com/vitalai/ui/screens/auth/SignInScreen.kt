@@ -1,5 +1,10 @@
 package com.vitalai.ui.screens.auth
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -9,6 +14,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -16,6 +24,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.vitalai.R
 import com.vitalai.navigation.Screen
 import com.vitalai.ui.components.LoadingState
 
@@ -28,6 +40,35 @@ fun SignInScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val authState by viewModel.authState.collectAsState()
+    val context = LocalContext.current
+
+    val googleSignInClient = remember {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(context.getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+        GoogleSignIn.getClient(context, gso)
+    }
+
+    val googleLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            try {
+                val account = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                    .getResult(ApiException::class.java)
+                val token = account.idToken
+                if (token != null) {
+                    viewModel.loginWithGoogle(token)
+                } else {
+                    viewModel.handleGoogleError("Không lấy được Google ID token. Vui lòng thử lại.")
+                }
+            } catch (e: ApiException) {
+                viewModel.handleGoogleError("Google Sign-In thất bại (mã lỗi: ${e.statusCode})")
+            }
+        }
+        // RESULT_CANCELED = user pressed back, no action needed
+    }
 
     LaunchedEffect(authState) {
         if (authState is AuthState.Success) {
@@ -145,6 +186,30 @@ fun SignInScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+
+            OutlinedButton(
+                onClick = {
+                    googleSignInClient.signOut().addOnCompleteListener {
+                        googleLauncher.launch(googleSignInClient.signInIntent)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                enabled = authState !is AuthState.Loading
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text("G", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Đăng nhập với Google", style = MaterialTheme.typography.titleMedium)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedButton(
                 onClick = { navController.navigate(Screen.SignUp) },
