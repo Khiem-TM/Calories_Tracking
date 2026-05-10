@@ -13,7 +13,7 @@ import { UsersService } from '../user/services/users.service';
 @Injectable()
 export class ChatbotService {
   private readonly client: ReturnType<typeof ModelClient>;
-  private readonly model = 'openai/gpt-5';
+  private readonly model = 'openai/gpt-4o-mini';
   private readonly endpoint = 'https://models.github.ai/inference';
 
   constructor(
@@ -41,7 +41,7 @@ export class ChatbotService {
     return this.sessionRepo.find({
       where: { user_id: userId },
       order: { created_at: 'DESC' },
-      take: 10,
+      take: 20,
     });
   }
 
@@ -53,6 +53,17 @@ export class ChatbotService {
     });
     if (!session) throw new NotFoundException('Chat session not found');
     return session;
+  }
+
+  async getMessages(userId: string, sessionId: string): Promise<ChatMessage[]> {
+    const session = await this.sessionRepo.findOne({
+      where: { id: sessionId, user_id: userId },
+    });
+    if (!session) throw new NotFoundException('Chat session not found');
+    return this.messageRepo.find({
+      where: { session_id: sessionId },
+      order: { created_at: 'ASC' },
+    });
   }
 
   async deleteSession(userId: string, sessionId: string): Promise<void> {
@@ -67,7 +78,7 @@ export class ChatbotService {
     userId: string,
     sessionId: string,
     userMessage: string,
-  ): Promise<{ reply: string }> {
+  ): Promise<ChatMessage> {
     const session = await this.sessionRepo.findOne({
       where: { id: sessionId, user_id: userId },
     });
@@ -97,7 +108,8 @@ export class ChatbotService {
       take: 20,
     });
 
-    // Build messages array for Azure AI Inference
+    const isFirstMessage = history.length === 0;
+
     const messages: Array<{ role: string; content: string }> = [
       { role: 'system', content: systemContent },
       ...history.map((msg) => ({
@@ -108,7 +120,7 @@ export class ChatbotService {
     ];
 
     const response = await this.client.path('/chat/completions').post({
-      body: { model: this.model, messages },
+      body: { model: this.model, messages, max_tokens: 800 },
     });
 
     if (isUnexpected(response)) {
@@ -118,13 +130,26 @@ export class ChatbotService {
 
     const reply = response.body.choices[0]?.message?.content ?? '';
 
-    // Persist both messages
-    await this.messageRepo.save([
+    // Persist user message + assistant reply
+    await this.messageRepo.save(
       this.messageRepo.create({ session_id: sessionId, role: 'user', content: userMessage }),
+    );
+    const assistantMsg = await this.messageRepo.save(
       this.messageRepo.create({ session_id: sessionId, role: 'assistant', content: reply }),
-    ]);
+    );
 
-    return { reply };
+    // Update session title (from first user message) and last_message preview
+    const sessionUpdate: Partial<ChatSession> = {
+      last_message: reply.slice(0, 120),
+    };
+    if (isFirstMessage) {
+      sessionUpdate.title = userMessage.length > 60
+        ? userMessage.slice(0, 60) + '…'
+        : userMessage;
+    }
+    await this.sessionRepo.update(sessionId, sessionUpdate);
+
+    return assistantMsg;
   }
 
   private buildSystemPrompt(ctx: {

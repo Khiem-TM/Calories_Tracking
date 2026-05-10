@@ -129,13 +129,17 @@ export interface WeeklyDashboard {
 export interface BodyMetric {
   id: string
   userId: string
-  date: string
-  weight?: number
-  chest?: number
-  waist?: number
-  hips?: number
-  biceps?: number
-  thighs?: number
+  recordedAt: string
+  weightKg?: number
+  bodyFatPct?: number
+  waistCm?: number
+  hipCm?: number
+  chestCm?: number
+  neckCm?: number
+  notes?: string
+  bmi?: number
+  bmr?: number
+  tdee?: number
 }
 
 export interface ActivityLog {
@@ -188,18 +192,29 @@ export interface Notification {
   createdAt: string
 }
 
+export interface BlogBlock {
+  id: string
+  blogId: string
+  order: number
+  type: 'text' | 'image'
+  textContent?: string
+  imageUrl?: string
+  createdAt: string
+}
+
 export interface Blog {
   id: string
   title: string
-  content: string
-  authorId: string
-  author?: User
+  authorId?: string
+  authorUser?: User
   tags?: string[]
-  status: 'draft' | 'pending' | 'approved' | 'rejected'
+  status: 'draft' | 'approved' | 'rejected'
+  rejectionReason?: string
   likesCount: number
-  commentsCount: number
+  commentCount: number
   viewCount: number
   thumbnailUrl?: string
+  blocks?: BlogBlock[]
   createdAt: string
   updatedAt: string
 }
@@ -207,9 +222,9 @@ export interface Blog {
 export interface BlogComment {
   id: string
   blogId: string
-  userId: string
-  user?: User
-  text: string
+  authorId?: string
+  authorUser?: User
+  content: string
   createdAt: string
 }
 

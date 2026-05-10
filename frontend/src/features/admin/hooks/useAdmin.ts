@@ -238,3 +238,41 @@ export const useCreateBlog = () => {
     onError: () => toast.error('Failed to create blog'),
   })
 }
+
+export const useUpdateBlog = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: string; dto: Partial<svc.CreateBlogDto> }) =>
+      svc.updateBlog(id, dto),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'blogs'] })
+      toast.success('Blog updated successfully')
+    },
+    onError: () => toast.error('Failed to update blog'),
+  })
+}
+
+export const useBatchApproveBlog = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: string[]) => svc.batchApproveBlog(ids),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['admin', 'blogs'] })
+      toast.success(`Approved ${res.updated} blog(s)`)
+    },
+    onError: () => toast.error('Batch approve failed'),
+  })
+}
+
+export const useBatchRejectBlog = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ids, reason }: { ids: string[]; reason?: string }) =>
+      svc.batchRejectBlog(ids, reason),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['admin', 'blogs'] })
+      toast.success(`Rejected ${res.updated} blog(s)`)
+    },
+    onError: () => toast.error('Batch reject failed'),
+  })
+}

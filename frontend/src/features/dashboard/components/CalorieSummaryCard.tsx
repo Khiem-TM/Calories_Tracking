@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
+import { PieChart, Pie, Cell, Tooltip } from 'recharts'
 
 interface Props {
   totalCalories: number
@@ -25,21 +25,19 @@ export function CalorieSummaryCard({ totalCalories, calorieGoal, protein, carbs,
       <p className="text-sm font-medium mb-1" style={{ color: '#7a9080' }}>Today&apos;s Calories</p>
       <div className="flex items-center gap-4">
         <div className="relative w-28 h-28 flex-shrink-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={[{ value: totalCalories }, { value: Math.max(0, remaining) }]}
-                cx="50%" cy="50%"
-                innerRadius={36} outerRadius={50}
-                startAngle={90} endAngle={-270}
-                dataKey="value"
-                strokeWidth={0}
-              >
-                <Cell fill="#1e4d35" />
-                <Cell fill="#d4eddf" />
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
+          <PieChart width={112} height={112}>
+            <Pie
+              data={[{ value: totalCalories }, { value: Math.max(0, remaining) }]}
+              cx="50%" cy="50%"
+              innerRadius={36} outerRadius={50}
+              startAngle={90} endAngle={-270}
+              dataKey="value"
+              strokeWidth={0}
+            >
+              <Cell fill="#1e4d35" />
+              <Cell fill="#d4eddf" />
+            </Pie>
+          </PieChart>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-lg font-bold" style={{ fontFamily: 'Playfair Display, serif', color: '#1a3829', lineHeight: 1.1 }}>
               {pct}%

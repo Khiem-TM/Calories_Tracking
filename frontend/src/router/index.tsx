@@ -37,6 +37,7 @@ const ProfilePage = lazy(() => import('@/pages/ProfilePage'))
 const ChatbotPage = lazy(() => import('@/pages/ChatbotPage'))
 const AiScanPage = lazy(() => import('@/pages/AiScanPage'))
 const BlogPage = lazy(() => import('@/pages/BlogPage'))
+const BlogDetailPage = lazy(() => import('@/pages/BlogDetailPage'))
 const NotificationsPage = lazy(() => import('@/pages/NotificationsPage'))
 
 // Admin pages
@@ -96,6 +97,7 @@ export function AppRouter() {
           <Route path="/chatbot" element={<ChatbotPage />} />
           <Route path="/ai-scan" element={<AiScanPage />} />
           <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/:id" element={<BlogDetailPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
         </Route>
 

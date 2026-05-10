@@ -225,19 +225,32 @@ export const createSportTip = async (dto: CreateSportTipDto): Promise<AdminSport
 }
 
 // ─── Blogs ────────────────────────────────────────────────────────────────────
+export interface AdminBlogBlock {
+  id: string
+  order: number
+  type: 'text' | 'image'
+  textContent?: string
+  imageUrl?: string
+}
+
 export interface AdminBlog {
   id: string
   title: string
-  status: 'pending' | 'approved' | 'rejected' | 'draft'
-  author?: { display_name: string; avatar_url?: string }
-  created_at: string
-  updated_at: string
-  thumbnail_url?: string
+  status: 'approved' | 'rejected' | 'draft'
+  author?: { displayName: string; avatarUrl?: string }
+  createdAt: string
+  updatedAt: string
+  thumbnailUrl?: string
   tags?: string[]
+  blocks?: AdminBlogBlock[]
+  rejectionReason?: string
+  likesCount?: number
+  viewCount?: number
+  commentCount?: number
 }
 
 export interface PaginatedBlogs {
-  blogs: AdminBlog[]
+  items: AdminBlog[]
   total: number
   page: number
   limit: number
@@ -252,16 +265,32 @@ export const getBlogs = async (
   return unwrap(res)
 }
 
+export const getPendingBlogCount = async (): Promise<number> => {
+  const res = await adminApi.get('/admin/blogs/pending-count')
+  return unwrap(res)
+}
+
+export interface AdminBlockPayload {
+  order: number
+  type: 'text' | 'image'
+  text_content?: string
+  image_url?: string
+}
+
 export interface CreateBlogDto {
   title: string
-  content: string
-  author?: string
+  blocks?: AdminBlockPayload[]
   thumbnailUrl?: string
   tags?: string[]
 }
 
 export const createBlog = async (dto: CreateBlogDto): Promise<AdminBlog> => {
   const res = await adminApi.post('/admin/blogs', dto)
+  return unwrap(res)
+}
+
+export const updateBlog = async (id: string, dto: Partial<CreateBlogDto>): Promise<AdminBlog> => {
+  const res = await adminApi.patch(`/admin/blogs/${id}`, dto)
   return unwrap(res)
 }
 
@@ -275,4 +304,14 @@ export const rejectBlog = async (id: string, reason?: string): Promise<void> => 
 
 export const deleteBlog = async (id: string): Promise<void> => {
   await adminApi.delete(`/admin/blogs/${id}`)
+}
+
+export const batchApproveBlog = async (ids: string[]): Promise<{ updated: number }> => {
+  const res = await adminApi.patch('/admin/blogs/batch-approve', { ids })
+  return unwrap(res)
+}
+
+export const batchRejectBlog = async (ids: string[], reason?: string): Promise<{ updated: number }> => {
+  const res = await adminApi.patch('/admin/blogs/batch-reject', { ids, reason })
+  return unwrap(res)
 }

@@ -103,15 +103,13 @@ export class BlogService {
   // ─── User ──────────────────────────────────────────────────────────────────
 
   async createUserBlog(userId: string, dto: CreateBlogDto) {
-    return this.dataSource.transaction(async (manager) => {
-      // Feature 4: draft mode
-      const status = dto.status === 'draft' ? 'draft' : 'pending';
+    const savedId = await this.dataSource.transaction(async (manager) => {
+      const status = dto.status === 'draft' ? 'draft' : 'approved';
 
       const blog = manager.create(Blog, {
         title: dto.title,
         author_id: userId,
         status,
-        // Feature 2: normalize empty array → null
         tags: dto.tags?.length ? dto.tags : null,
       });
 
@@ -122,6 +120,8 @@ export class BlogService {
         );
         blog.thumbnailUrl = result.url;
         blog.thumbnailPublicId = result.publicId;
+      } else if (dto.thumbnailUrl) {
+        blog.thumbnailUrl = dto.thumbnailUrl;
       }
 
       const saved = await manager.save(Blog, blog);
@@ -131,8 +131,9 @@ export class BlogService {
         await manager.save(BlogBlock, blocks);
       }
 
-      return this.findWithBlocks(saved.id);
+      return saved.id;
     });
+    return this.findWithBlocks(savedId);
   }
 
   async updateUserBlog(userId: string, blogId: string, dto: UpdateBlogDto) {
@@ -140,7 +141,7 @@ export class BlogService {
     if (!blog) throw new NotFoundException('Blog not found');
     if (blog.author_id !== userId) throw new ForbiddenException('Not your blog');
 
-    return this.dataSource.transaction(async (manager) => {
+    await this.dataSource.transaction(async (manager) => {
       if (dto.thumbnailBase64) {
         if (blog.thumbnailPublicId) {
           await this.cloudinaryService.deleteFile(blog.thumbnailPublicId);
@@ -155,22 +156,14 @@ export class BlogService {
 
       if (dto.title) blog.title = dto.title;
 
-      // Feature 2: update tags if provided
       if (dto.tags !== undefined) {
         blog.tags = dto.tags.length ? dto.tags : null;
       }
 
-      // Feature 4: draft/pending status logic
-      if (blog.status === 'draft') {
-        // Only switch to pending when user explicitly publishes
-        if (dto.status === 'pending') {
-          blog.status = 'pending';
-          blog.rejectionReason = null;
-        }
-        // Content-only edits keep the blog as draft
-      } else {
-        // approved/rejected/pending → any content change re-submits for review
-        blog.status = 'pending';
+      const isDraft = (blog.status as string) === 'draft';
+      const keepAsDraft = (dto.status as string) === 'draft';
+      if (isDraft && !keepAsDraft) {
+        blog.status = 'approved';
         blog.rejectionReason = null;
       }
 
@@ -190,9 +183,8 @@ export class BlogService {
           await manager.save(BlogBlock, blocks);
         }
       }
-
-      return this.findWithBlocks(blogId);
     });
+    return this.findWithBlocks(blogId);
   }
 
   async deleteUserBlog(userId: string, blogId: string) {
@@ -326,7 +318,7 @@ export class BlogService {
   }
 
   async adminCreateBlog(dto: CreateBlogDto) {
-    return this.dataSource.transaction(async (manager) => {
+    const savedId = await this.dataSource.transaction(async (manager) => {
       const blog = manager.create(Blog, {
         title: dto.title,
         author_id: null,
@@ -341,6 +333,8 @@ export class BlogService {
         );
         blog.thumbnailUrl = result.url;
         blog.thumbnailPublicId = result.publicId;
+      } else if (dto.thumbnailUrl) {
+        blog.thumbnailUrl = dto.thumbnailUrl;
       }
 
       const saved = await manager.save(Blog, blog);
@@ -350,15 +344,16 @@ export class BlogService {
         await manager.save(BlogBlock, blocks);
       }
 
-      return this.findWithBlocks(saved.id);
+      return saved.id;
     });
+    return this.findWithBlocks(savedId);
   }
 
   async adminUpdateBlog(id: string, dto: UpdateBlogDto) {
     const blog = await this.blogRepo.findOne({ where: { id }, relations: ['blocks'] });
     if (!blog) throw new NotFoundException('Blog not found');
 
-    return this.dataSource.transaction(async (manager) => {
+    await this.dataSource.transaction(async (manager) => {
       if (dto.thumbnailBase64) {
         if (blog.thumbnailPublicId) {
           await this.cloudinaryService.deleteFile(blog.thumbnailPublicId);
@@ -390,9 +385,8 @@ export class BlogService {
           await manager.save(BlogBlock, blocks);
         }
       }
-
-      return this.findWithBlocks(id);
     });
+    return this.findWithBlocks(id);
   }
 
   async adminApproveBlog(id: string) {
