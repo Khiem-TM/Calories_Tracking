@@ -9,6 +9,9 @@ import { MealLogsService } from '../food/services/meal-logs.service';
 import { BodyMetricsService } from '../train/services/body-metrics.service';
 import { TrainingService } from '../train/services/training.service';
 import { UsersService } from '../user/services/users.service';
+import { RedisService } from '../support/redis/redis.service';
+
+const CHATBOT_CTX_TTL = 600; // 10 minutes
 
 @Injectable()
 export class ChatbotService {
@@ -25,6 +28,7 @@ export class ChatbotService {
     private readonly bodyMetricsService: BodyMetricsService,
     private readonly trainingService: TrainingService,
     private readonly usersService: UsersService,
+    private readonly redisService: RedisService,
   ) {
     this.client = ModelClient(
       this.endpoint,
@@ -84,22 +88,26 @@ export class ChatbotService {
     });
     if (!session) throw new NotFoundException('Chat session not found');
 
-    // Aggregate user context in parallel
+    // Aggregate user context — cached per user per day to avoid 4 DB queries per message
     const today = new Date().toISOString().split('T')[0];
-    const [bodyMetric, healthProfile, dailySummary, recentWorkouts] =
-      await Promise.all([
-        this.bodyMetricsService.getLatest(userId).catch(() => null),
-        this.usersService.getHealthProfile(userId).catch(() => null),
-        this.mealLogsService.getDailySummary(userId, today).catch(() => null),
-        this.trainingService.getWorkoutHistory(userId, 7).catch(() => []),
-      ]);
+    const ctxKey = `chatbot:ctx:${userId}:${today}`;
+    let ctx = await this.redisService.getJson<{
+      bodyMetric: any; healthProfile: any; dailySummary: any; recentWorkouts: any[];
+    }>(ctxKey);
 
-    const systemContent = this.buildSystemPrompt({
-      bodyMetric,
-      healthProfile,
-      dailySummary,
-      recentWorkouts,
-    });
+    if (!ctx) {
+      const [bodyMetric, healthProfile, dailySummary, recentWorkouts] =
+        await Promise.all([
+          this.bodyMetricsService.getLatest(userId).catch(() => null),
+          this.usersService.getHealthProfile(userId).catch(() => null),
+          this.mealLogsService.getDailySummary(userId, today).catch(() => null),
+          this.trainingService.getWorkoutHistory(userId, 7).catch(() => []),
+        ]);
+      ctx = { bodyMetric, healthProfile, dailySummary, recentWorkouts };
+      await this.redisService.setJson(ctxKey, ctx, CHATBOT_CTX_TTL);
+    }
+
+    const systemContent = this.buildSystemPrompt(ctx);
 
     // Load last 20 messages as history
     const history = await this.messageRepo.find({

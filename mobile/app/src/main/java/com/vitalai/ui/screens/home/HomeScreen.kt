@@ -60,7 +60,7 @@ fun HomeScreen(
                     .padding(padding),
                 contentPadding = PaddingValues(top = 16.dp, bottom = 40.dp)
             ) {
-                item { HomeHeader(navController) }
+                item { HomeHeader(navController, uiState) }
                 item { WeekStrip() }
                 item { DailyCaloriesCard() }
                 item { WaterAndActivityCards() }
@@ -75,7 +75,10 @@ fun HomeScreen(
 }
 
 @Composable
-fun HomeHeader(navController: NavController) {
+fun HomeHeader(navController: NavController, uiState: HomeUiState) {
+    val userName = uiState.user?.displayName ?: "Davil"
+    val avatarUrl = uiState.user?.avatarUrl ?: "https://i.pravatar.cc/150?img=11"
+    
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -86,7 +89,7 @@ fun HomeHeader(navController: NavController) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Avatar
             AsyncImage(
-                model = "https://i.pravatar.cc/150?img=11",
+                model = avatarUrl,
                 contentDescription = "Avatar",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -96,7 +99,7 @@ fun HomeHeader(navController: NavController) {
             Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text("Sun, 10 June", fontSize = 13.sp, color = Color.Gray)
-                Text("Hello, Davil \uD83D\uDC4B", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text("Hello, $userName 👋", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
             }
         }
         
@@ -113,7 +116,9 @@ fun HomeHeader(navController: NavController) {
             ) {
                 Icon(Icons.Default.Notifications, contentDescription = "Notification", tint = Color.Black, modifier = Modifier.size(22.dp))
                 // Red dot
-                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color.Red).align(Alignment.TopEnd).offset((-10).dp, 10.dp))
+                if (uiState.unreadCount > 0) {
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color.Red).align(Alignment.TopEnd).offset((-10).dp, 10.dp))
+                }
             }
             // Add Button
             Box(
